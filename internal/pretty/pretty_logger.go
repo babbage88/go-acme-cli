@@ -3,15 +3,31 @@ package pretty
 import (
 	"io"
 	"runtime"
-	"time"
 )
 
-type PrettyLogger interface {
-	PrettyErrorLog(w io.Writer)
+type CustomLogger struct {
+	level  string
+	output io.Writer
 }
 
-type LoggerConfig struct {
-	Prefix string `json:"prefix"`
+type CustomLoggerPrefixProperty struct {
+	Value     string `json:"value"`
+	Index     int8   `json:"index"`
+	Padding   int8   `json:"padding"`
+	Seperator string `json:"seperator"`
+}
+
+func NewCustomLogger(output io.Writer, level string) *CustomLogger {
+	return &CustomLogger{
+		level:  level,
+		output: output,
+	}
+}
+
+func (l *CustomLogger) Info(message string) {
+	if l.level == "info" || l.level == "warn" || l.level == "error" {
+		l.output.Write([]byte("[INFO] " + message + "\n"))
+	}
 }
 
 func getCurrentFileLine() (string, int) {
@@ -38,11 +54,4 @@ func currentFunction() (string, int) {
 	}
 	funcName := runtime.FuncForPC(pc).Name()
 	return funcName, 0
-}
-
-func (p *prettyPrinter) PrettyErrorLog() {
-	logType := "ERROR"
-	timeStamp := time.Now()
-	timeStampString := p.DateTimeSting(timeStamp)
-	curFunc, line := callerFunction()
 }
