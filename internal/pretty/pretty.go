@@ -13,6 +13,8 @@ type PrettyPrintOption func(p *prettyPrinter)
 type PrettyPrinter interface {
 	Print(s string)
 	Printf(format string, a ...any)
+	PrettyLogInfoStringf(format string, a ...any)
+	PrettyLogString(s string)
 	PrintWarning(s string)
 	PrintWarningf(format string, a ...any)
 	PrintError(s string)
@@ -72,6 +74,17 @@ func (p *prettyPrinter) Print(s ...any) {
 func (p *prettyPrinter) Printf(format string, a ...any) {
 	fstring := fmt.Sprintf(format, a...)
 	p.Print(fstring)
+}
+
+func (p *prettyPrinter) PrettyLogInfoStringf(s string, a ...any) string {
+	formatted := fmt.Sprintf(s, a...)
+	prettyFormatted := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", p.InfoColor, formatted)
+	return prettyFormatted
+}
+
+func (p *prettyPrinter) PrettyLogInfoString(s string) string {
+	prettyString := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", p.InfoColor, s)
+	return prettyString
 }
 
 func (p *prettyPrinter) PrintWarning(s ...any) {
@@ -143,6 +156,23 @@ func Printf(format string, a ...any) {
 	fmt.Printf("\x1b[1;%dm%s\x1b[0m\n", infoColor, fstring)
 }
 
+func PrettyLogInfoStringf(s string, a ...any) string {
+	const (
+		infoColor = int32(92)
+	)
+	formatted := fmt.Sprintf(s, a...)
+	prettyFormatted := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", infoColor, formatted)
+	return prettyFormatted
+}
+
+func PrettyLogInfoString(s string) string {
+	const (
+		infoColor = int32(92)
+	)
+	prettyString := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", infoColor, s)
+	return prettyString
+}
+
 func PrintWarning(s ...any) {
 	const (
 		warnColor = int32(93)
@@ -165,12 +195,23 @@ func PrintError(s ...any) {
 	fmt.Printf("\x1b[1;%dm%s\x1b[0m\n", errColor, s)
 }
 
-func PrintErrorf(format string, a ...any) {
+func PrettyErrorLogString(format string, a ...any) string {
+	fmtString := fmt.Sprintf(format, a...)
+
 	const (
 		errColor = int32(91)
 	)
-	fstring := fmt.Sprintf(format, a...)
-	fmt.Printf("\x1b[1;%dm%s\x1b[0m\n", errColor, fstring)
+	logStr := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", errColor, fmtString)
+	return logStr
+}
+
+func PrintErrorf(format string, a ...any) {
+	fmtString := fmt.Sprintf(format, a...)
+
+	const (
+		errColor = int32(91)
+	)
+	fmt.Printf("\x1b[1;%dm%s\x1b[0m\n", errColor, fmtString)
 }
 
 func PrettyPrintDateTime(t time.Time) {
