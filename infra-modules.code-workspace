@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../go-infra"
+		},
+		{
+			"path": "../infra-db"
+		},
+		{
+			"path": "../infra-kubeinit"
+		}
+	],
+	"settings": {}
+}
