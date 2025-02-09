@@ -169,7 +169,7 @@ func PrettyLogInfoString(s string) string {
 	const (
 		infoColor = int32(92)
 	)
-	prettyString := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", infoColor, s)
+	prettyString := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m", infoColor, s)
 	return prettyString
 }
 

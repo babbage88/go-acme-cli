@@ -30,7 +30,7 @@ func NewCloudflareClient(envfile string) (*cloudflare.Client, error) {
 
 	if client == nil {
 		slog.Error("Error creating cloudflare.Client, recieved nil pointer. Verify CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL Env vars")
-		return nil, fmt.Errorf("rror creating cloudflare.Client, recieved nil pointer. Verify CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL Env vars", os.Getenv("CLOUDFLARE_EMAIL"))
+		return nil, fmt.Errorf("error creating cloudflare.Client, recieved nil pointer. Verify CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL Env vars %s", os.Getenv("CLOUDFLARE_EMAIL"))
 	}
 
 	return client, nil
@@ -44,7 +44,7 @@ func getDnsRecordsList(envfile string, zoneId string) ([]dns.RecordResponse, err
 		return records, err
 	}
 	page, err := client.DNS.Records.List(context.TODO(), dns.RecordListParams{
-		ZoneID: cloudflare.F("023e105f4ecef8ad9ca31a8372d0c353"),
+		ZoneID: cloudflare.F(zoneId),
 	})
 	if err != nil {
 		slog.Error("Error retrieving DNS records", slog.String("error", err.Error()))

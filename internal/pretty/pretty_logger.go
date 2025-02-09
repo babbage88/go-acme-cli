@@ -1,13 +1,26 @@
 package pretty
 
 import (
+	"fmt"
 	"io"
 	"runtime"
+	"sort"
+	"strings"
+	"time"
 )
 
 type CustomLogger struct {
-	level  string
-	output io.Writer
+	Level         string
+	Output        io.Writer
+	DebugInfo     FuncDebugInfo
+	PrefixProps   []CustomLoggerPrefixProperty
+	PrettyConsole bool
+}
+
+type FuncDebugInfo struct {
+	FunctionName string `json:"functionName"`
+	FileName     string `json:"fileName"`
+	LineNumber   int    `json:"lineNumber"`
 }
 
 type CustomLoggerPrefixProperty struct {
@@ -17,41 +30,137 @@ type CustomLoggerPrefixProperty struct {
 	Seperator string `json:"seperator"`
 }
 
-func NewCustomLogger(output io.Writer, level string) *CustomLogger {
-	return &CustomLogger{
-		level:  level,
-		output: output,
+func NewCustomLogger(output io.Writer, level string, padding int8, seperatorChar string, pretty bool) *CustomLogger {
+	debugInfo := &FuncDebugInfo{}
+	prefixPropDate := &CustomLoggerPrefixProperty{
+		Value:     DateTimeSting(time.Now()),
+		Index:     int8(0),
+		Padding:   padding,
+		Seperator: seperatorChar,
 	}
+	props := make([]CustomLoggerPrefixProperty, 0, 8)
+	props = append(props, *prefixPropDate)
+	logger := &CustomLogger{
+		Level:         level,
+		Output:        output,
+		DebugInfo:     *debugInfo,
+		PrefixProps:   props,
+		PrettyConsole: true,
+	}
+	return logger
+}
+
+func (lp *CustomLoggerPrefixProperty) GetPaddingString() string {
+	var sbPad strings.Builder
+	for i := 0; i < int(lp.Padding); i++ {
+		sbPad.WriteString(" ")
+	}
+	padStr := sbPad.String()
+	return padStr
+}
+
+func (lp *CustomLoggerPrefixProperty) ToString() string {
+	var prefixBuilder strings.Builder
+	var sbPad strings.Builder
+	for i := 0; i < int(lp.Padding); i++ {
+		sbPad.WriteString(" ")
+	}
+	padStr := sbPad.String()
+	if lp.Index == 0 {
+		prefixBuilder.WriteString(DateTimeSting(time.Now()))
+		prefixBuilder.WriteString(padStr)
+		prefixBuilder.WriteString(lp.Seperator)
+	} else {
+		prefixBuilder.WriteString(padStr)
+		prefixBuilder.WriteString(lp.Value)
+		prefixBuilder.WriteString(padStr)
+		prefixBuilder.WriteString(lp.Seperator)
+	}
+	return prefixBuilder.String()
+}
+
+func (c *CustomLogger) Prefix() string {
+	var prefixBuilder strings.Builder
+	sort.Slice(c.PrefixProps, func(i, j int) bool {
+		return c.PrefixProps[i].Index < c.PrefixProps[j].Index
+	})
+
+	for idx, v := range c.PrefixProps {
+		switch idx {
+		case 1:
+			prefixBuilder.WriteString(v.GetPaddingString())
+			prefixBuilder.WriteString(c.Level)
+			prefixBuilder.WriteString(v.GetPaddingString())
+			prefixBuilder.WriteString(v.Seperator)
+		}
+		prefixBuilder.WriteString(v.ToString())
+	}
+
+	return prefixBuilder.String()
 }
 
 func (l *CustomLogger) Info(message string) {
-	if l.level == "info" || l.level == "warn" || l.level == "error" {
-		l.output.Write([]byte("[INFO] " + message + "\n"))
+	msgString := l.Prefix() + " " + "[INFO]" + " - " + message + "\n"
+	if l.PrettyConsole {
+		msgString = PrettyLogInfoString(msgString)
 	}
+	l.Output.Write([]byte(msgString))
 }
 
-func getCurrentFileLine() (string, int) {
-	_, file, line, ok := runtime.Caller(1)
-	if !ok {
-		return "unknown", 0
+func (l *CustomLogger) Debug(message string) {
+	l.DebugInfo.GetCallerDebugInfo(3)
+	msgString := l.Prefix() + " " + "[DEBUG]" + l.DebugInfo.GetCallerDebugString(3) + message + "\n"
+	if l.PrettyConsole {
+		msgString = PrettyLogInfoString(msgString)
 	}
-	return file, line
+	l.Output.Write([]byte(msgString))
 }
 
-func callerFunction() (string, int) {
-	pc, _, _, ok := runtime.Caller(1)
+func getCallerInfo(caller int) (string, string, int) {
+	pc, file, line, ok := runtime.Caller(caller)
 	if !ok {
-		return "unknown", 0
+		return "", "", 0
 	}
 	funcName := runtime.FuncForPC(pc).Name()
-	return funcName, 0
+
+	return funcName, file, line
 }
 
-func currentFunction() (string, int) {
-	pc, _, _, ok := runtime.Caller(0)
+func GetDebugInfoString(caller int) string {
+	pc, file, line, ok := runtime.Caller(caller)
 	if !ok {
-		return "unknown", 0
+		return ""
 	}
 	funcName := runtime.FuncForPC(pc).Name()
-	return funcName, 0
+	debugLogString := fmt.Sprintf("func: %s line: %d %s", funcName, line, file)
+
+	return debugLogString
+}
+
+func GetFuncDebugInfo(caller int) FuncDebugInfo {
+	pc, file, line, ok := runtime.Caller(caller)
+	if !ok {
+		return FuncDebugInfo{}
+	}
+	funcName := runtime.FuncForPC(pc).Name()
+
+	debugInfo := &FuncDebugInfo{
+		FunctionName: funcName,
+		FileName:     file,
+		LineNumber:   line,
+	}
+
+	return *debugInfo
+}
+
+func (d *FuncDebugInfo) GetCallerDebugInfo(caller int) {
+	funcName, file, line := getCallerInfo(caller)
+	d.FileName = file
+	d.FunctionName = funcName
+	d.LineNumber = line
+}
+
+func (d *FuncDebugInfo) GetCallerDebugString(caller int) string {
+	debugLogString := fmt.Sprintf(" %s %d %s ", d.FunctionName, d.LineNumber, d.FileName)
+	return debugLogString
 }
