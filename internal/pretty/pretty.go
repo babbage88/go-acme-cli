@@ -165,6 +165,14 @@ func PrettyLogInfoStringf(s string, a ...any) string {
 	return prettyFormatted
 }
 
+func PrettyLogErrorString(s string) string {
+	const (
+		errorColor = int32(91)
+	)
+	prettyString := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m", errorColor, s)
+	return prettyString
+}
+
 func PrettyLogInfoString(s string) string {
 	const (
 		infoColor = int32(92)

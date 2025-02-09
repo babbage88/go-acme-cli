@@ -107,6 +107,14 @@ func (l *CustomLogger) Info(message string) {
 	l.Output.Write([]byte(msgString))
 }
 
+func (l *CustomLogger) Error(message string) {
+	msgString := l.Prefix() + " " + "[ERROR]" + " - " + message + "\n"
+	if l.PrettyConsole {
+		msgString = PrettyLogErrorString(msgString)
+	}
+	l.Output.Write([]byte(msgString))
+}
+
 func (l *CustomLogger) Debug(message string) {
 	l.DebugInfo.GetCallerDebugInfo(3)
 	msgString := l.Prefix() + " " + "[DEBUG]" + l.DebugInfo.GetCallerDebugString(3) + message + "\n"
