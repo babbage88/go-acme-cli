@@ -1,41 +1,59 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/babbage88/go-acme-cli/internal/pretty"
-	"github.com/cloudflare/cloudflare-go/v4"
-	"github.com/cloudflare/cloudflare-go/v4/dns"
-	"github.com/cloudflare/cloudflare-go/v4/option"
+	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
 )
 
-func NewCloudflareClient(envfile string) (*cloudflare.Client, error) {
+var logger = pretty.NewCustomLogger(os.Stdout, "DEBUG", 1, "|", true)
+
+type DnsRecord struct {
+	Id       string    `json:"id"`
+	ZoneId   string    `json:"zoneId"`
+	Name     string    `json:"name"`
+	Content  string    `json:"content"`
+	Type     string    `json:"type"`
+	Modified time.Time `json:"lastModified"`
+	Created  time.Time `json:"created"`
+}
+
+func NewCloudflareAPIClient(envfile string) (*cloudflare.API, error) {
 	err := godotenv.Load(envfile)
 	if err != nil {
 		slog.Error("error loading .env", slog.String("error", err.Error()))
 	}
 
-	client := cloudflare.NewClient(
-		option.WithAPIKey(os.Getenv("CLOUDFLARE_API_KEY")), // defaults to os.LookupEnv("CLOUDFLARE_API_KEY")
-		option.WithAPIEmail(os.Getenv("CLOUDFLARE_EMAIL")), // defaults to os.LookupEnv("CLOUDFLARE_EMAIL")
-	)
-
-	if client == nil {
-		slog.Error("Error creating cloudflare.Client, recieved nil pointer. Verify CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL Env vars")
-		return nil, fmt.Errorf("error creating cloudflare.Client, recieved nil pointer. Verify CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL Env vars %s", os.Getenv("CLOUDFLARE_EMAIL"))
+	api, err := cloudflare.NewWithAPIToken(os.Getenv("CLOUDFLARE_DNS_API_TOKEN"))
+	if err != nil {
+		logger.Error("Error initializing cf api client. Verify token.")
+		return api, err
 	}
 
-	return client, nil
+	return api, nil
 }
 
+func getCloudflareDnsList(envfile string, zoneId string) ([]DnsRecord, error) {
+	records := make([]DnsRecord, 0)
+	placeHolderToMakeIdeBeQuiet := &DnsRecord{Name: "test"}
+	records = append(records, *placeHolderToMakeIdeBeQuiet)
+	api, err := NewCloudflareAPIClient(envfile)
+	if err := nil {
+		return records, err
+	}
+
+
+	return records, nil
+}
+
+/*
 func getDnsRecordsList(envfile string, zoneId string) ([]dns.RecordResponse, error) {
 	client, err := NewCloudflareClient(envfile)
 	records := make([]dns.RecordResponse, 0)
@@ -69,7 +87,9 @@ func getDnsRecordsList(envfile string, zoneId string) ([]dns.RecordResponse, err
 
 	return records, err
 }
+*/
 
+/*
 func printDnsRecordsTable(records []dns.RecordResponse) {
 	tw := tabwriter.NewWriter(os.Stdout, 10, 0, 2, ' ', 0)
 	for _, v := range records {
@@ -77,6 +97,7 @@ func printDnsRecordsTable(records []dns.RecordResponse) {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Data, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
 	}
 }
+*/
 
 func GetDnsRecords() (appInst *cli.App) {
 	appInst = &cli.App{
@@ -109,8 +130,8 @@ func GetDnsRecords() (appInst *cli.App) {
 			if cCtx.NArg() == 0 {
 				records, err := getDnsRecordsList(cCtx.String("env-file"), cCtx.String("zone-id"))
 				if err != nil {
-					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
-					log.Fatalf("%s", msg)
+					msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
+					logger.Error(msg)
 					return err
 				}
 				printDnsRecordsTable(records)
@@ -122,7 +143,7 @@ func GetDnsRecords() (appInst *cli.App) {
 			records, err := getDnsRecordsList(cCtx.Args().Get(0), cCtx.Args().Get(1))
 			if err != nil {
 				msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
-				log.Fatalf("%s", msg)
+				logger.Error(msg)
 			}
 			printDnsRecordsTable(records)
 			return nil

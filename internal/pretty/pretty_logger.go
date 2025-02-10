@@ -79,7 +79,7 @@ func (lp *CustomLoggerPrefixProperty) ToString() string {
 	return prefixBuilder.String()
 }
 
-func (c *CustomLogger) Prefix() string {
+func (c *CustomLogger) Prefix(level string) string {
 	var prefixBuilder strings.Builder
 	sort.Slice(c.PrefixProps, func(i, j int) bool {
 		return c.PrefixProps[i].Index < c.PrefixProps[j].Index
@@ -87,9 +87,9 @@ func (c *CustomLogger) Prefix() string {
 
 	for idx, v := range c.PrefixProps {
 		switch idx {
-		case 1:
+		case 0:
 			prefixBuilder.WriteString(v.GetPaddingString())
-			prefixBuilder.WriteString(c.Level)
+			prefixBuilder.WriteString(level)
 			prefixBuilder.WriteString(v.GetPaddingString())
 			prefixBuilder.WriteString(v.Seperator)
 		}
@@ -100,15 +100,23 @@ func (c *CustomLogger) Prefix() string {
 }
 
 func (l *CustomLogger) Info(message string) {
-	msgString := l.Prefix() + " " + "[INFO]" + " - " + message + "\n"
+	msgString := l.Prefix("[INFO]") + " - " + message + "\n"
 	if l.PrettyConsole {
 		msgString = PrettyLogInfoString(msgString)
 	}
 	l.Output.Write([]byte(msgString))
 }
 
+func (l *CustomLogger) Warning(message string) {
+	msgString := l.Prefix("[WARN]") + " " + " - " + message + "\n"
+	if l.PrettyConsole {
+		msgString = PrettyLogErrorString(msgString)
+	}
+	l.Output.Write([]byte(msgString))
+}
+
 func (l *CustomLogger) Error(message string) {
-	msgString := l.Prefix() + " " + "[ERROR]" + " - " + message + "\n"
+	msgString := l.Prefix("[ERROR]") + " - " + message + "\n"
 	if l.PrettyConsole {
 		msgString = PrettyLogErrorString(msgString)
 	}
@@ -117,7 +125,7 @@ func (l *CustomLogger) Error(message string) {
 
 func (l *CustomLogger) Debug(message string) {
 	l.DebugInfo.GetCallerDebugInfo(3)
-	msgString := l.Prefix() + " " + "[DEBUG]" + l.DebugInfo.GetCallerDebugString(3) + message + "\n"
+	msgString := l.Prefix("[DEBUG]") + " - " + l.DebugInfo.GetCallerDebugString(3) + message + "\n"
 	if l.PrettyConsole {
 		msgString = PrettyLogInfoString(msgString)
 	}
