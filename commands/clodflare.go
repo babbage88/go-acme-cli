@@ -1,10 +1,12 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"text/tabwriter"
 	"time"
 
 	"github.com/babbage88/go-acme-cli/internal/pretty"
@@ -40,17 +42,40 @@ func NewCloudflareAPIClient(envfile string) (*cloudflare.API, error) {
 	return api, nil
 }
 
-func getCloudflareDnsList(envfile string, zoneId string) ([]DnsRecord, error) {
-	records := make([]DnsRecord, 0)
-	placeHolderToMakeIdeBeQuiet := &DnsRecord{Name: "test"}
-	records = append(records, *placeHolderToMakeIdeBeQuiet)
+func getCloudflareDnsListByDomainName(envfile string, domainName string) ([]cloudflare.DNSRecord, error) {
+	records := make([]cloudflare.DNSRecord, 0)
 	api, err := NewCloudflareAPIClient(envfile)
-	if err := nil {
+	if err != nil {
 		return records, err
 	}
 
+	zoneID, err := api.ZoneIDByName(domainName)
+	if err != nil {
+		slog.Debug("Error retrieving ZoneId for domain name", slog.String("DomainName", domainName))
+		return records, err
+	}
 
+	records, _, err = api.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(zoneID), cloudflare.ListDNSRecordsParams{})
+	if err != nil {
+		return records, err
+	}
 	return records, nil
+}
+
+func GetCloudFlareZoneIdForDomainName(envfile string, domainName string) (string, error) {
+	api, err := NewCloudflareAPIClient(envfile)
+	if err != nil {
+		return "", err
+	}
+
+	zoneID, err := api.ZoneIDByName(domainName)
+	if err != nil {
+		msg := fmt.Sprintf("Error retrieving ZoneId for Domain: %s error: %s", domainName, err.Error())
+		logger.Error(msg)
+		return zoneID, err
+	}
+
+	return zoneID, err
 }
 
 /*
@@ -89,15 +114,14 @@ func getDnsRecordsList(envfile string, zoneId string) ([]dns.RecordResponse, err
 }
 */
 
-/*
-func printDnsRecordsTable(records []dns.RecordResponse) {
+func printDnsRecordsTable(records []cloudflare.DNSRecord) {
 	tw := tabwriter.NewWriter(os.Stdout, 10, 0, 2, ' ', 0)
 	for _, v := range records {
+		logger.Info(fmt.Sprintf("Record ID %s", v.ID))
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "ID", "Name", "Content", "Data", "Type", "CreatedOn", "ModifiedOn")
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Data, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
 	}
 }
-*/
 
 func GetDnsRecords() (appInst *cli.App) {
 	appInst = &cli.App{
@@ -114,9 +138,9 @@ func GetDnsRecords() (appInst *cli.App) {
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "zone-id",
-				Aliases: []string{"z"},
-				Value:   "1a03a1886dc5855341b01d0afa9fa3c3",
+				Name:    "domain-name",
+				Aliases: []string{"n"},
+				Value:   "trahan.dev",
 				Usage:   "Cloudflare Zone Id to retrieve records for.",
 			},
 			&cli.StringFlag{
@@ -128,7 +152,7 @@ func GetDnsRecords() (appInst *cli.App) {
 		},
 		Action: func(cCtx *cli.Context) (err error) {
 			if cCtx.NArg() == 0 {
-				records, err := getDnsRecordsList(cCtx.String("env-file"), cCtx.String("zone-id"))
+				records, err := getCloudflareDnsListByDomainName(cCtx.String("env-file"), cCtx.String("domain-name"))
 				if err != nil {
 					msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
 					logger.Error(msg)
@@ -140,7 +164,7 @@ func GetDnsRecords() (appInst *cli.App) {
 			}
 			log.Printf("args: %+v", cCtx.Args())
 
-			records, err := getDnsRecordsList(cCtx.Args().Get(0), cCtx.Args().Get(1))
+			records, err := getCloudflareDnsListByDomainName(cCtx.Args().Get(0), cCtx.Args().Get(1))
 			if err != nil {
 				msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
 				logger.Error(msg)
