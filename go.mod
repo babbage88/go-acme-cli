@@ -10,11 +10,8 @@ require (
 )
 
 require (
-	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/time v0.9.0 // indirect
 )
 
@@ -27,7 +24,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/urfave/cli/v2 v2.27.5
+	github.com/urfave/cli/v3 v3.0.0-beta1
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/text v0.21.0 // indirect

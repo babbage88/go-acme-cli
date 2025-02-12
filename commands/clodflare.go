@@ -12,7 +12,7 @@ import (
 	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var logger = pretty.NewCustomLogger(os.Stdout, "DEBUG", 1, "|", true)
@@ -35,7 +35,7 @@ func NewCloudflareAPIClient(envfile string) (*cloudflare.API, error) {
 
 	api, err := cloudflare.NewWithAPIToken(os.Getenv("CLOUDFLARE_DNS_API_TOKEN"))
 	if err != nil {
-		logger.Error("Error initializing cf api client. Verify token.")
+		slog.Error("Error initializing cf api client. Verify token.")
 		return api, err
 	}
 
@@ -71,107 +71,134 @@ func GetCloudFlareZoneIdForDomainName(envfile string, domainName string) (string
 	zoneID, err := api.ZoneIDByName(domainName)
 	if err != nil {
 		msg := fmt.Sprintf("Error retrieving ZoneId for Domain: %s error: %s", domainName, err.Error())
-		logger.Error(msg)
+		slog.Error(msg)
 		return zoneID, err
 	}
 
 	return zoneID, err
 }
 
-/*
-func getDnsRecordsList(envfile string, zoneId string) ([]dns.RecordResponse, error) {
-	client, err := NewCloudflareClient(envfile)
-	records := make([]dns.RecordResponse, 0)
-	if err != nil {
-		slog.Error("Error creating cloudflare.Client, recieved nil pointer. Verify CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL Env vars")
-		return records, err
-	}
-	page, err := client.DNS.Records.List(context.TODO(), dns.RecordListParams{
-		ZoneID: cloudflare.F(zoneId),
-	})
-	if err != nil {
-		slog.Error("Error retrieving DNS records", slog.String("error", err.Error()))
-		return records, err
-	}
-
-	records = append(records, page.Result...)
-	page, err = page.GetNextPage()
-	if err != nil {
-		slog.Error("Error retieving next page of records.", slog.String("error", err.Error()))
-		return records, err
-	}
-
-	for page != nil {
-		records = append(records, page.Result...)
-		page, err = page.GetNextPage()
-		if err != nil {
-			slog.Error("Error retieving next page of records.", slog.String("error", err.Error()))
-			return records, err
-		}
-	}
-
-	return records, err
-}
-*/
-
 func printDnsRecordsTable(records []cloudflare.DNSRecord) {
-	tw := tabwriter.NewWriter(os.Stdout, 10, 0, 2, ' ', 0)
+	tw := tabwriter.NewWriter(os.Stdout, 5, 1, 2, '\t', 0)
+	fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
 	for _, v := range records {
-		logger.Info(fmt.Sprintf("Record ID %s", v.ID))
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", "ID", "Name", "Content", "Data", "Type", "CreatedOn", "ModifiedOn")
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Data, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
+		pretty.Print(fmt.Sprintf("DNSRecord %s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn)))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
 	}
 }
 
-func GetDnsRecords() (appInst *cli.App) {
-	appInst = &cli.App{
-		Name:                 "infra-cli",
-		Version:              "0.0.10",
-		Compiled:             time.Now(),
-		Args:                 true,
-		EnableBashCompletion: true,
-		Authors: []*cli.Author{
-			{
-				Name:  "Justin Trahan",
-				Email: "justin@trahan.dev",
-			},
+type UrFaveCliDocumentationSucks struct {
+	Name  string `json:"authorName"`
+	Email string `json:"email"`
+}
+
+func (author *UrFaveCliDocumentationSucks) String() string {
+	return fmt.Sprintf("Name: %s Email: %s", author.Name, author.Email)
+}
+
+func cfDnsCommandFlags() []cli.Flag {
+	flags := []cli.Flag{
+		&cli.StringFlag{
+			Name:    "domain-name",
+			Aliases: []string{"n"},
+			Value:   "trahan.dev",
+			Usage:   "Cloudflare Zone Id to retrieve records for.",
 		},
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "domain-name",
-				Aliases: []string{"n"},
-				Value:   "trahan.dev",
-				Usage:   "Cloudflare Zone Id to retrieve records for.",
-			},
-			&cli.StringFlag{
-				Name:    "env-file",
-				Aliases: []string{"e"},
-				Value:   ".env",
-				Usage:   ".env file to use to load Cloudflare API keys and Zone ID",
-			},
+		&cli.StringFlag{
+			Name:    "env-file",
+			Aliases: []string{"e"},
+			Value:   ".env",
+			Usage:   ".env file to use to load Cloudflare API keys and Zone ID",
 		},
-		Action: func(cCtx *cli.Context) (err error) {
-			if cCtx.NArg() == 0 {
-				records, err := getCloudflareDnsListByDomainName(cCtx.String("env-file"), cCtx.String("domain-name"))
+	}
+	return flags
+}
+
+func cfDnsComandAuthors() []any {
+	authors := []any{
+		&UrFaveCliDocumentationSucks{
+			Name:  "Justin Trahan",
+			Email: "justin@trahan.dev",
+		},
+	}
+	return authors
+}
+
+func getZoneIdCmd(envfile string, domain string) error {
+	zoneId, err := GetCloudFlareZoneIdForDomainName(envfile, domain)
+	if err != nil {
+		msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
+		logger.Error(msg)
+		return err
+	}
+	msg := fmt.Sprintf("Domain: %s ZoneId: %s", domain, zoneId)
+	logger.Info(msg)
+	return nil
+}
+
+func GetDnsSubCommands() []*cli.Command {
+	dnsCmds := []*cli.Command{
+		{
+			Name:    "dns",
+			Version: "1.0.0",
+			Aliases: []string{"get-zoneid"},
+			Authors: cfDnsComandAuthors(),
+			Flags:   cfDnsCommandFlags(),
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					err := getZoneIdCmd(cmd.String("env-file"), cmd.String("domain-name"))
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+				err = getZoneIdCmd(cmd.Args().Get(0), cmd.Args().Get(1))
 				if err != nil {
-					msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
-					logger.Error(msg)
 					return err
+				}
+				return err
+			},
+		},
+		{
+			Name:    "list",
+			Version: "1.0.0",
+			Authors: cfDnsComandAuthors(),
+			Flags:   cfDnsCommandFlags(),
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+
+					records, err := getCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
+					if err != nil {
+						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
+						slog.Error(msg)
+						return err
+					}
+					printDnsRecordsTable(records)
+					return nil
+
+				}
+				log.Printf("args: %+v", cmd.Args())
+
+				records, err := getCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
+				if err != nil {
+					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
+					pretty.PrintError(msg)
 				}
 				printDnsRecordsTable(records)
 				return nil
-
-			}
-			log.Printf("args: %+v", cCtx.Args())
-
-			records, err := getCloudflareDnsListByDomainName(cCtx.Args().Get(0), cCtx.Args().Get(1))
-			if err != nil {
-				msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
-				logger.Error(msg)
-			}
-			printDnsRecordsTable(records)
-			return nil
+			},
 		},
 	}
-	return appInst
+	return dnsCmds
+}
+
+func CoreInfraCommand() *cli.Command {
+	cmd := &cli.Command{
+		Name:     "goinfra",
+		Version:  "v1.0.0",
+		Authors:  cfDnsComandAuthors(),
+		Flags:    cfDnsCommandFlags(),
+		Commands: GetDnsSubCommands(),
+	}
+	return cmd
 }
