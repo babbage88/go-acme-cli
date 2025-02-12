@@ -3,11 +3,9 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
@@ -17,14 +15,28 @@ import (
 
 var logger = pretty.NewCustomLogger(os.Stdout, "DEBUG", 1, "|", true)
 
-type DnsRecord struct {
-	Id       string    `json:"id"`
-	ZoneId   string    `json:"zoneId"`
-	Name     string    `json:"name"`
-	Content  string    `json:"content"`
-	Type     string    `json:"type"`
-	Modified time.Time `json:"lastModified"`
-	Created  time.Time `json:"created"`
+type GoInfraCli struct {
+	Name        string       `json:"name"`
+	BaseCommand *cli.Command `json:"baseCmd"`
+	Version     string       `json:"version"`
+}
+
+func (c *GoInfraCli) SubCommands() []*cli.Command {
+	return c.BaseCommand.Commands
+}
+
+func (c *GoInfraCli) Authors(a *UrFaveCliDocumentationSucks) string {
+	return a.String()
+}
+
+func (c *GoInfraCli) GetDnsSubCommands(sub *cli.Command) error {
+	start := len(c.BaseCommand.Commands)
+	c.BaseCommand.Commands = append(c.BaseCommand.Commands, sub)
+	if len(c.BaseCommand.Commands) == start {
+		err := fmt.Errorf("Error adding SubCommands, length %d did not change", start)
+		return err
+	}
+	return nil
 }
 
 func NewCloudflareAPIClient(envfile string) (*cloudflare.API, error) {
@@ -147,15 +159,9 @@ func GetDnsSubCommands() []*cli.Command {
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					err := getZoneIdCmd(cmd.String("env-file"), cmd.String("domain-name"))
-					if err != nil {
-						return err
-					}
-					return nil
-				}
-				err = getZoneIdCmd(cmd.Args().Get(0), cmd.Args().Get(1))
-				if err != nil {
 					return err
 				}
+				err = getZoneIdCmd(cmd.Args().Get(0), cmd.Args().Get(1))
 				return err
 			},
 		},
@@ -166,7 +172,6 @@ func GetDnsSubCommands() []*cli.Command {
 			Flags:   cfDnsCommandFlags(),
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-
 					records, err := getCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
 					if err != nil {
 						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
@@ -174,10 +179,8 @@ func GetDnsSubCommands() []*cli.Command {
 						return err
 					}
 					printDnsRecordsTable(records)
-					return nil
-
+					return err
 				}
-				log.Printf("args: %+v", cmd.Args())
 
 				records, err := getCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
 				if err != nil {
@@ -185,7 +188,7 @@ func GetDnsSubCommands() []*cli.Command {
 					pretty.PrintError(msg)
 				}
 				printDnsRecordsTable(records)
-				return nil
+				return err
 			},
 		},
 	}
@@ -194,10 +197,10 @@ func GetDnsSubCommands() []*cli.Command {
 
 func CoreInfraCommand() *cli.Command {
 	cmd := &cli.Command{
-		Name:     "goinfra",
-		Version:  "v1.0.0",
-		Authors:  cfDnsComandAuthors(),
-		Flags:    cfDnsCommandFlags(),
+		Name:    "goinfra",
+		Version: "v1.0.0",
+		Authors: cfDnsComandAuthors(),
+		// Flags:    cfDnsCommandFlags(),
 		Commands: GetDnsSubCommands(),
 	}
 	return cmd
