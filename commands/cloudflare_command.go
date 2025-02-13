@@ -71,6 +71,7 @@ func cfDnsCommandFlags() []cli.Flag {
 			Name:    "domain-name",
 			Aliases: []string{"n"},
 			Value:   "trahan.dev",
+			Sources: cli.EnvVars("CF_DOMAIN_NAME"),
 			Usage:   "Cloudflare Zone Id to retrieve records for.",
 		},
 		&cli.StringFlag{
@@ -80,6 +81,26 @@ func cfDnsCommandFlags() []cli.Flag {
 			Usage:   ".env file to use to load Cloudflare API keys and Zone ID",
 		},
 	}
+	return flags
+}
+
+func cfDnsUpdateFlags() []cli.Flag {
+	flags := cfDnsCommandFlags()
+	updateFlags := []cli.Flag{
+		&cli.StringFlag{
+			Name:    "record-id",
+			Aliases: []string{"i"},
+			Sources: cli.EnvVars("CF_REC_UPDATE_ID"),
+			Usage:   "The ID for Record you want to update.",
+		},
+		&cli.StringFlag{
+			Name:    "new-content",
+			Aliases: []string{"c"},
+			Value:   "",
+			Usage:   "The new content or Value for the record.",
+		},
+	}
+	flags = append(flags, updateFlags...)
 	return flags
 }
 
@@ -130,6 +151,33 @@ func GetDnsSubCommands() []*cli.Command {
 			Authors: cfDnsComandAuthors(),
 			Aliases: []string{"list-records"},
 			Flags:   cfDnsCommandFlags(),
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
+					if err != nil {
+						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
+						slog.Error(msg)
+						return err
+					}
+					printDnsRecordsTable(records)
+					return err
+				}
+
+				records, err := GetCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
+				if err != nil {
+					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
+					pretty.PrintError(msg)
+				}
+				printDnsRecordsTable(records)
+				return err
+			},
+		},
+		{
+			Name:    "update",
+			Version: versionNumber,
+			Authors: cfDnsComandAuthors(),
+			Aliases: []string{"list-records"},
+			Flags:   cfDnsUpdateFlags(),
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
