@@ -156,12 +156,18 @@ func Printf(format string, a ...any) {
 	fmt.Printf("\x1b[1;%dm%s\x1b[0m\n", infoColor, fstring)
 }
 
-func PrettyLogInfoStringf(s string, a ...any) string {
+func PrettyString(s string, a ...any) string {
 	const (
 		infoColor = int32(92)
 	)
 	formatted := fmt.Sprintf(s, a...)
 	prettyFormatted := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m\n", infoColor, formatted)
+	return prettyFormatted
+}
+
+func PrettyStringWithColor(s string, color int32, a ...any) string {
+	formatted := fmt.Sprintf(s, a...)
+	prettyFormatted := fmt.Sprintf("\x1b[1;%dm%s\x1b[0m", color, formatted)
 	return prettyFormatted
 }
 

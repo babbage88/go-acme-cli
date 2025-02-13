@@ -13,12 +13,20 @@ import (
 )
 
 func printDnsRecordsTable(records []cloudflare.DNSRecord) {
+	var colorInt int32 = 97
 	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 1, ' ', 0)
-	fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
-	fmt.Fprintln(tw, "--\t----\t-------\t----\t---------\t----------\t")
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
+	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t\x1b[0m\n", colorInt)
 	for _, v := range records {
-		pretty.Print(fmt.Sprintf("DNSRecord %s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn)))
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
+		switch v.Type {
+		case "A":
+			colorInt = int32(96)
+		case "CNAME":
+			colorInt = int32(92)
+		default:
+			colorInt = int32(97)
+		}
+		fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
 	}
 	tw.Flush()
 }
