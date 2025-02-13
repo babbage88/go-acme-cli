@@ -131,11 +131,12 @@ func getZoneIdCmd(envfile string, domain string) error {
 func GetDnsSubCommands() []*cli.Command {
 	dnsSubCmds := []*cli.Command{
 		{
-			Name:    "zone",
-			Version: versionNumber,
-			Aliases: []string{"get-zoneid"},
-			Authors: cfDnsComandAuthors(),
-			Flags:   cfDnsCommandFlags(),
+			Name:                  "zone",
+			Version:               versionNumber,
+			Aliases:               []string{"get-zoneid"},
+			Authors:               cfDnsComandAuthors(),
+			Flags:                 cfDnsCommandFlags(),
+			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					err := getZoneIdCmd(cmd.String("env-file"), cmd.String("domain-name"))
@@ -146,11 +147,12 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:    "list",
-			Version: versionNumber,
-			Authors: cfDnsComandAuthors(),
-			Aliases: []string{"list-records"},
-			Flags:   cfDnsCommandFlags(),
+			Name:                  "list",
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Aliases:               []string{"list-records"},
+			Flags:                 cfDnsCommandFlags(),
+			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
@@ -173,11 +175,40 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:    "update",
-			Version: versionNumber,
-			Authors: cfDnsComandAuthors(),
-			Aliases: []string{"list-records"},
-			Flags:   cfDnsUpdateFlags(),
+			Name:                  "update",
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Aliases:               []string{"set", "update-record"},
+			Flags:                 cfDnsUpdateFlags(),
+			EnableShellCompletion: true,
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
+					if err != nil {
+						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
+						slog.Error(msg)
+						return err
+					}
+					printDnsRecordsTable(records)
+					return err
+				}
+
+				records, err := GetCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
+				if err != nil {
+					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
+					pretty.PrintError(msg)
+				}
+				printDnsRecordsTable(records)
+				return err
+			},
+		},
+		{
+			Name:                  "delete",
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Aliases:               []string{"rm", "remove-record"},
+			Flags:                 cfDnsUpdateFlags(),
+			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
