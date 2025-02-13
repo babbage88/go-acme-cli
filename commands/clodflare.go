@@ -93,7 +93,7 @@ func GetCloudFlareZoneIdForDomainName(envfile string, domainName string) (string
 }
 
 func printDnsRecordsTable(records []cloudflare.DNSRecord) {
-	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 1, ' ', 0)
 	fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
 	for _, v := range records {
 		pretty.Print(fmt.Sprintf("DNSRecord %s\t%s\t%s\t%s\t%s\t%s\n", v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn)))
@@ -104,6 +104,7 @@ func printDnsRecordsTable(records []cloudflare.DNSRecord) {
 func printDnsAndZoneIdTable(domain string, zoneId string) error {
 	tw := tabwriter.NewWriter(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "DomainName\t\tZoneID")
+	fmt.Fprintln(tw, "----------\t\t------")
 	fmt.Fprintf(tw, "%s\t\t%s\n", domain, zoneId)
 	err := tw.Flush()
 	return err
