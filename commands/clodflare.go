@@ -44,6 +44,21 @@ func GetCloudFlareZoneIdByDomainName(envfile string, domainName string) (string,
 	return zoneID, err
 }
 
+func UpdateCloudflareDnsRecord(envfile string, zoneId string, recordUpdateParams cloudflare.UpdateDNSRecordParams) (cloudflare.DNSRecord, error) {
+	record := cloudflare.DNSRecord{}
+	api, err := NewCloudflareAPIClient(envfile)
+	if err != nil {
+		return record, err
+	}
+
+	record, err = api.UpdateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), recordUpdateParams)
+	if err != nil {
+		slog.Error("Error updating dns record", slog.String("error", err.Error()), slog.String("RecordID", record.ID))
+		return record, err
+	}
+	return record, err
+}
+
 func GetCloudflareDnsListByDomainName(envfile string, domainName string) ([]cloudflare.DNSRecord, error) {
 	records := make([]cloudflare.DNSRecord, 0)
 	api, err := NewCloudflareAPIClient(envfile)

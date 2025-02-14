@@ -31,6 +31,24 @@ func printDnsRecordsTable(records []cloudflare.DNSRecord) {
 	tw.Flush()
 }
 
+func printDnsRecord(record cloudflare.DNSRecord) {
+	var colorInt int32 = 97
+
+	switch record.Type {
+	case "A":
+		colorInt = int32(96)
+	case "CNAME":
+		colorInt = int32(92)
+	default:
+		colorInt = int32(97)
+	}
+	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 1, ' ', 0)
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
+	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t\x1b[0m\n", colorInt)
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, record.ID, record.Name, record.Content, record.Type, pretty.DateTimeSting(record.CreatedOn), pretty.DateTimeSting(record.ModifiedOn))
+	tw.Flush()
+}
+
 func printDnsAndZoneIdTable(domain string, zoneId string) error {
 	tw := tabwriter.NewWriter(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "DomainName\t\tZoneID")
@@ -59,13 +77,13 @@ func CoreInfraCommand() *cli.Command {
 		EnableShellCompletion: true,
 		Version:               "v1.0.0",
 		Authors:               cfDnsComandAuthors(),
-		// Flags:    cfDnsCommandFlags(),
-		Commands: DnsBaseCommand(),
+		Flags:                 GlobalCommandFlags(),
+		Commands:              GetDnsSubCommands(),
 	}
 	return cmd
 }
 
-func cfDnsCommandFlags() []cli.Flag {
+func GlobalCommandFlags() []cli.Flag {
 	flags := []cli.Flag{
 		&cli.StringFlag{
 			Name:    "domain-name",
@@ -85,22 +103,54 @@ func cfDnsCommandFlags() []cli.Flag {
 }
 
 func cfDnsUpdateFlags() []cli.Flag {
-	flags := cfDnsCommandFlags()
-	updateFlags := []cli.Flag{
+	flags := []cli.Flag{
 		&cli.StringFlag{
-			Name:    "record-id",
-			Aliases: []string{"i"},
-			Sources: cli.EnvVars("CF_REC_UPDATE_ID"),
-			Usage:   "The ID for Record you want to update.",
+			Name:     "record-id",
+			Aliases:  []string{"i"},
+			Required: true,
+			Sources:  cli.EnvVars("CF_REC_UPDATE_ID"),
+			Usage:    "The ID for Record you want to update.",
 		},
 		&cli.StringFlag{
 			Name:    "new-content",
 			Aliases: []string{"c"},
-			Value:   "",
 			Usage:   "The new content or Value for the record.",
 		},
+		&cli.StringFlag{
+			Name:    "record-name",
+			Aliases: []string{"n"},
+			Usage:   "The name for the dns record",
+		},
+		&cli.StringFlag{
+			Name:    "type",
+			Aliases: []string{"t", "record-type"},
+			Usage:   "The type of dns record: A, AAAA, CNAME, MX, TXT",
+		},
+		&cli.UintFlag{
+			Name:    "priority",
+			Aliases: []string{"p", "record-priority"},
+			Usage:   "DNS Record priority",
+		},
+		&cli.IntFlag{
+			Name:    "ttl",
+			Aliases: []string{"record-ttl"},
+			Usage:   "new ttl for recird",
+		},
+		&cli.BoolFlag{
+			Name:  "proxied",
+			Usage: "Whether the record is proxied via cloudflare",
+		},
+		&cli.StringFlag{
+			Name:    "comment",
+			Aliases: []string{"record-comment"},
+			Usage:   "Comment for the dns record",
+		},
+		&cli.StringSliceFlag{
+			Name:    "tags",
+			Aliases: []string{"record-tags"},
+			Usage:   "tags for record",
+		},
 	}
-	flags = append(flags, updateFlags...)
 	return flags
 }
 
@@ -135,7 +185,7 @@ func GetDnsSubCommands() []*cli.Command {
 			Version:               versionNumber,
 			Aliases:               []string{"get-zoneid"},
 			Authors:               cfDnsComandAuthors(),
-			Flags:                 cfDnsCommandFlags(),
+			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
@@ -147,11 +197,12 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:                  "list",
-			Version:               versionNumber,
-			Authors:               cfDnsComandAuthors(),
-			Aliases:               []string{"list-records"},
-			Flags:                 cfDnsCommandFlags(),
+			Name:     "list",
+			Version:  versionNumber,
+			Authors:  cfDnsComandAuthors(),
+			Aliases:  []string{"list-records"},
+			Category: "dns",
+			// Flags:                 GlobalCommandFlags(),
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
@@ -179,26 +230,48 @@ func GetDnsSubCommands() []*cli.Command {
 			Version:               versionNumber,
 			Authors:               cfDnsComandAuthors(),
 			Aliases:               []string{"set", "update-record"},
+			Category:              "dns",
 			Flags:                 cfDnsUpdateFlags(),
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
-					if err != nil {
-						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
-						slog.Error(msg)
-						return err
+					params := cloudflare.UpdateDNSRecordParams{ID: cmd.String("record-id")}
+					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					if cfcmd.Error != nil {
+						logger.Error(cfcmd.Error.Error())
+						return cfcmd.Error
 					}
-					printDnsRecordsTable(records)
-					return err
+					if cmd.IsSet("new-content") {
+						params.Content = cmd.String("new-content")
+					}
+					if cmd.IsSet("record-name") {
+						params.Name = cmd.String("record-name")
+					}
+					if cmd.IsSet("type") {
+						params.Type = cmd.String("type")
+					}
+					if cmd.IsSet("priority") {
+						priority64 := cmd.Uint("priority")
+						pr16 := uint16(priority64)
+						params.Priority = &pr16
+					}
+					if cmd.IsSet("ttl") {
+						params.TTL = int(cmd.Int("ttl"))
+					}
+					if cmd.IsSet("proxied") {
+						proxied := cmd.Bool("proxied")
+						params.Proxied = &proxied
+					}
+					if cmd.IsSet("comment") {
+						comment := cmd.String("proxied")
+						params.Comment = &comment
+					}
+					if cmd.IsSet("tags") {
+						params.Tags = cmd.StringSlice("tags")
+					}
+					cfcmd.UpdateCloudflareDnsRecord(params)
+					err = cfcmd.Error
 				}
-
-				records, err := GetCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
-				if err != nil {
-					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
-					pretty.PrintError(msg)
-				}
-				printDnsRecordsTable(records)
 				return err
 			},
 		},
@@ -208,6 +281,7 @@ func GetDnsSubCommands() []*cli.Command {
 			Authors:               cfDnsComandAuthors(),
 			Aliases:               []string{"rm", "remove-record"},
 			Flags:                 cfDnsUpdateFlags(),
+			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
