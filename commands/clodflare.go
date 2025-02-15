@@ -84,7 +84,29 @@ func DeleteCloudFlareDnsRecord(envfile string, zoneId string, recordId string) e
 	return err
 }
 
-func GetCloudflareDnsListByDomainName(envfile string, domainName string) ([]cloudflare.DNSRecord, error) {
+func ListCloudflareDnsWithQueryParams(envfile string, domainName string, params cloudflare.ListDNSRecordsParams) ([]cloudflare.DNSRecord, *cloudflare.ResultInfo, error) {
+	records := make([]cloudflare.DNSRecord, 0)
+	//var recordss = []cloudflare.DNSRecord{}
+	var result = &cloudflare.ResultInfo{}
+	api, err := NewCloudflareAPIClient(envfile)
+	if err != nil {
+		return records, result, err
+	}
+
+	zoneID, err := api.ZoneIDByName(domainName)
+	if err != nil {
+		slog.Debug("Error retrieving ZoneId for domain name", slog.String("DomainName", domainName))
+		return records, result, err
+	}
+
+	records, result, err = api.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(zoneID), params)
+	if err != nil {
+		return records, result, err
+	}
+	return records, result, nil
+}
+
+func GetAllCloudflareDnsRecordByDomain(envfile string, domainName string) ([]cloudflare.DNSRecord, error) {
 	records := make([]cloudflare.DNSRecord, 0)
 	api, err := NewCloudflareAPIClient(envfile)
 	if err != nil {

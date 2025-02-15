@@ -2,11 +2,9 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v3"
@@ -49,27 +47,21 @@ type UrFaveCliDocumentationSucks struct {
 	Email string `json:"email"`
 }
 
-func (cfcmd CloudflareCommandUtils) UpdateCloudflareDnsRecord(recordUpdateParams cloudflare.UpdateDNSRecordParams) cloudflare.DNSRecord {
-	record := cloudflare.DNSRecord{}
-
-	paramb, err := json.Marshal(recordUpdateParams)
-	if err != nil {
-		pretty.PrintErrorf("error marshaling json %s", err.Error())
-	}
-	pretty.Print(string(paramb))
-	record, cfcmd.Error = cfcmd.ApiClient.UpdateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordUpdateParams)
-	return record
+func (cfcmd *CloudflareCommandUtils) ListDNSRecords(params cloudflare.ListDNSRecordsParams) ([]cloudflare.DNSRecord, *cloudflare.ResultInfo) {
+	var records = []cloudflare.DNSRecord{}
+	var results = &cloudflare.ResultInfo{}
+	records, results, cfcmd.Error = cfcmd.ApiClient.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), params)
+	return records, results
 }
 
 func (cfcmd *CloudflareCommandUtils) GetDnsRecord(recordId string) cloudflare.DNSRecord {
-	record := cloudflare.DNSRecord{}
+	var record = cloudflare.DNSRecord{}
 	record, cfcmd.Error = cfcmd.ApiClient.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordId)
 	return record
-
 }
 
 func (cfcmd *CloudflareCommandUtils) CreateOrUpdateDNSRecord(params any) cloudflare.DNSRecord {
-	record := cloudflare.DNSRecord{}
+	var record = cloudflare.DNSRecord{}
 
 	switch v := any(params).(type) {
 	case cloudflare.UpdateDNSRecordParams:
@@ -114,7 +106,7 @@ func (c *GoInfraCli) GetDnsSubCommands(sub *cli.Command) error {
 }
 
 func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, zoneId string, params T) (cloudflare.DNSRecord, error) {
-	record := cloudflare.DNSRecord{}
+	var record = cloudflare.DNSRecord{}
 	var err error = nil
 	switch v := any(params).(type) {
 	case cloudflare.UpdateDNSRecordParams:
@@ -133,7 +125,7 @@ func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, 
 			return record, err
 		}
 	default:
-		err = fmt.Errorf("unsupported DNS record operation %T. Must use cloudflare.UpdateDNSRecordParams or CreateDNSRecordParams.", params)
+		err = fmt.Errorf("unsupported DNS record operation %T. Must use cloudflare.UpdateDNSRecordParams or CreateDNSRecordParams", params)
 	}
 	return record, err
 }

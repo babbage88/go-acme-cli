@@ -3,9 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
-	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/urfave/cli/v3"
 )
@@ -54,7 +52,7 @@ func cfDnsSubcommandFlags() []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:    "new-content",
-			Aliases: []string{"c"},
+			Aliases: []string{"record-content", "c"},
 			Usage:   "The new content or Value for the record.",
 		},
 		&cli.StringFlag{
@@ -138,31 +136,94 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:                  "list",
-			Version:               versionNumber,
-			Authors:               cfDnsComandAuthors(),
-			Aliases:               []string{"list-records", "ls"},
+			Name:    "list",
+			Version: versionNumber,
+			Authors: cfDnsComandAuthors(),
+			Aliases: []string{"list-records", "ls"},
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "qry-record-content",
+					Aliases: []string{"qry-content"},
+					Usage:   "Record content for list query.",
+				},
+				&cli.StringFlag{
+					Name:    "qry-record-type",
+					Aliases: []string{"qry-type"},
+					Usage:   "Record type for list query.",
+				},
+				&cli.BoolFlag{
+					Name:    "qry-record-proxied",
+					Aliases: []string{"qry-proxied"},
+					Usage:   "Return proxied records only.",
+				},
+				&cli.StringFlag{
+					Name:    "qry-record-name",
+					Aliases: []string{"qry-name"},
+					Usage:   "Record name for list query.",
+				},
+				&cli.StringFlag{
+					Name:    "qry-record-comment",
+					Aliases: []string{"qry-comment"},
+					Usage:   "Record comment for list query.",
+				},
+				&cli.StringSliceFlag{
+					Name:    "qry-record-tags",
+					Aliases: []string{"qry-tags"},
+					Usage:   "Record tags for list query.",
+				},
+				&cli.UintFlag{
+					Name:    "qry-record-priority",
+					Aliases: []string{"query-priority"},
+					Usage:   "Return list of all records that match query priority",
+				},
+				&cli.BoolFlag{
+					Name:    "list-qry",
+					Aliases: []string{"query-records"},
+					Usage:   "Return list of all records that match query params",
+					Value:   false,
+				},
+			},
 			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
-				if cmd.NArg() == 0 {
-					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
-					if err != nil {
-						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
-						slog.Error(msg)
-						return err
+				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+				var params = &cloudflare.ListDNSRecordsParams{}
+				if cfcmd.Error != nil {
+					logger.Error(cfcmd.Error.Error())
+					return cfcmd.Error
+				}
+				if cmd.Bool("list-qry") {
+					if cmd.IsSet("qry-record-content") {
+						params.Content = cmd.String("qry-record-content")
 					}
+					if cmd.IsSet("qry-record-name") {
+						params.Name = cmd.String("qry-record-name")
+					}
+					if cmd.IsSet("qry-record-type") {
+						params.Type = cmd.String("qry-record-type")
+					}
+					if cmd.IsSet("qry-record-priority") {
+						priority64 := cmd.Uint("qry-record-priority")
+						pr16 := uint16(priority64)
+						params.Priority = &pr16
+					}
+					if cmd.IsSet("qry-record-proxied") {
+						proxied := cmd.Bool("qry-record-proxied")
+						params.Proxied = &proxied
+					}
+					if cmd.IsSet("qry-record-comment") {
+						params.Comment = cmd.String("qry-record-comment")
+					}
+					if cmd.IsSet("qry-record-tags") {
+						params.Tags = cmd.StringSlice("tags")
+					}
+					records, _ := cfcmd.ListDNSRecords(*params)
 					printDnsRecordsTable(records)
-					return err
+					return cfcmd.Error
 				}
-
-				records, err := GetCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
-				if err != nil {
-					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
-					pretty.PrintError(msg)
-				}
+				records, _ := cfcmd.ListDNSRecords(*params)
 				printDnsRecordsTable(records)
-				return err
+				return cfcmd.Error
 			},
 		},
 		{
@@ -225,7 +286,6 @@ func GetDnsSubCommands() []*cli.Command {
 						return cfcmd.Error
 					}
 					if cmd.IsSet("new-content") {
-						logger.Debug(cmd.String("new-content"))
 						params.Content = cmd.String("new-content")
 					}
 					if cmd.IsSet("record-name") {
