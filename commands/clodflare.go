@@ -28,6 +28,21 @@ func NewCloudflareAPIClient(envfile string) (*cloudflare.API, error) {
 	return api, nil
 }
 
+func GetCloudflareDnsRecordDetails(envfile string, zoneId string, recordId string) (cloudflare.DNSRecord, error) {
+	record := cloudflare.DNSRecord{}
+	api, err := NewCloudflareAPIClient(envfile)
+	if err != nil {
+		return record, err
+	}
+
+	record, err = api.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), recordId)
+	if err != nil {
+		slog.Error("Error retrieving record details.", slog.String("error", err.Error()), slog.String("RecordID", record.ID))
+		return record, err
+	}
+	return record, err
+}
+
 func GetCloudFlareZoneIdByDomainName(envfile string, domainName string) (string, error) {
 	api, err := NewCloudflareAPIClient(envfile)
 	if err != nil {

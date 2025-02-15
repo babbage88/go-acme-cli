@@ -61,6 +61,13 @@ func (cfcmd CloudflareCommandUtils) UpdateCloudflareDnsRecord(recordUpdateParams
 	return record
 }
 
+func (cfcmd *CloudflareCommandUtils) GetDnsRecord(recordId string) cloudflare.DNSRecord {
+	record := cloudflare.DNSRecord{}
+	record, cfcmd.Error = cfcmd.ApiClient.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordId)
+	return record
+
+}
+
 func (cfcmd *CloudflareCommandUtils) CreateOrUpdateDNSRecord(params any) cloudflare.DNSRecord {
 	record := cloudflare.DNSRecord{}
 

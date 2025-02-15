@@ -141,7 +141,7 @@ func GetDnsSubCommands() []*cli.Command {
 			Name:                  "list",
 			Version:               versionNumber,
 			Authors:               cfDnsComandAuthors(),
-			Aliases:               []string{"list-records"},
+			Aliases:               []string{"list-records", "ls"},
 			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
@@ -163,6 +163,41 @@ func GetDnsSubCommands() []*cli.Command {
 				}
 				printDnsRecordsTable(records)
 				return err
+			},
+		},
+		{
+			Name:    "get",
+			Version: versionNumber,
+			Authors: cfDnsComandAuthors(),
+			Aliases: []string{"get-record", "cat"},
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "get-record-id",
+					Aliases: []string{"qry-record-id"},
+					Usage:   "The ID for Record you want to get details for.",
+				},
+			},
+			Category:              "dns",
+			EnableShellCompletion: true,
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					if cfcmd.Error != nil {
+						logger.Error(cfcmd.Error.Error())
+						return cfcmd.Error
+					}
+					record := cfcmd.GetDnsRecord(cmd.String("get-record-id"))
+					printDnsRecordAsJson(record)
+					return cfcmd.Error
+				}
+				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+				if cfcmd.Error != nil {
+					logger.Error(cfcmd.Error.Error())
+					return cfcmd.Error
+				}
+				record := cfcmd.GetDnsRecord(cmd.Args().Get(0))
+				printDnsRecordAsJson(record)
+				return cfcmd.Error
 			},
 		},
 		{
@@ -231,23 +266,31 @@ func GetDnsSubCommands() []*cli.Command {
 			Authors: cfDnsComandAuthors(),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
-					Name:     "rm-record-id",
-					Aliases:  []string{"remove-id", "remove-record-id", "delete-record-id"},
-					Required: true,
-					Sources:  cli.EnvVars("CF_RECORD_DELETE_ID"),
-					Usage:    "The ID for Record you want to update.",
+					Name:    "rm-record-id",
+					Aliases: []string{"remove-id", "remove-record-id", "delete-record-id"},
+					Sources: cli.EnvVars("CF_RECORD_DELETE_ID"),
+					Usage:   "The ID for Record you want to update.",
 				},
 			},
 			Aliases:               []string{"rm", "remove-record"},
 			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					if cfcmd.Error != nil {
+						logger.Error(cfcmd.Error.Error())
+						return cfcmd.Error
+					}
+					cfcmd.DeleteCloudflareRecord(cmd.String("rm-record-id"))
+					return cfcmd.Error
+				}
 				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
 				if cfcmd.Error != nil {
 					logger.Error(cfcmd.Error.Error())
 					return cfcmd.Error
 				}
-				cfcmd.DeleteCloudflareRecord(cmd.String("rm-record-id"))
+				cfcmd.DeleteCloudflareRecord(cmd.Args().Get(0))
 				return cfcmd.Error
 			},
 		},

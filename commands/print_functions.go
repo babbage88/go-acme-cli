@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -53,4 +54,15 @@ func printDnsAndZoneIdTable(domain string, zoneId string) error {
 	fmt.Fprintf(tw, "%s\t\t%s\n", domain, zoneId)
 	err := tw.Flush()
 	return err
+}
+
+func printDnsRecordAsJson(record cloudflare.DNSRecord) error {
+	fmt.Println()
+	response, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", (string(response)))
+
+	return nil
 }
