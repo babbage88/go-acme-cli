@@ -35,6 +35,12 @@ func CoreInfraCommand() *cli.Command {
 				Value:   ".env",
 				Usage:   ".env file to use to load Cloudflare API keys and Zone ID",
 			},
+			&cli.BoolFlag{
+				Name:    "print-json",
+				Aliases: []string{"show-json", "json"},
+				Usage:   "Return list of all records that match query params",
+				Value:   false,
+			},
 		},
 		Commands: DnsBaseCommand(),
 	}
@@ -182,12 +188,6 @@ func GetDnsSubCommands() []*cli.Command {
 					Usage:   "Return list of all records that match query params",
 					Value:   false,
 				},
-				&cli.BoolFlag{
-					Name:    "print-json",
-					Aliases: []string{"show-json"},
-					Usage:   "Return list of all records that match query params",
-					Value:   false,
-				},
 			},
 			Category:              "dns",
 			EnableShellCompletion: true,
@@ -258,7 +258,11 @@ func GetDnsSubCommands() []*cli.Command {
 						return cfcmd.Error
 					}
 					record := cfcmd.GetDnsRecord(cmd.String("get-record-id"))
-					printDnsRecordAsJson(record)
+					if cmd.Bool("print-json") {
+						cfcmd.PrintCommandResultAsJson(record)
+						return cfcmd.Error
+					}
+					printDnsRecord(record)
 					return cfcmd.Error
 				}
 				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
@@ -267,7 +271,11 @@ func GetDnsSubCommands() []*cli.Command {
 					return cfcmd.Error
 				}
 				record := cfcmd.GetDnsRecord(cmd.Args().Get(0))
-				printDnsRecordAsJson(record)
+				if cmd.Bool("print-json") {
+					cfcmd.PrintCommandResultAsJson(record)
+					return cfcmd.Error
+				}
+				printDnsRecord(record)
 				return cfcmd.Error
 			},
 		},
@@ -324,6 +332,10 @@ func GetDnsSubCommands() []*cli.Command {
 						params.Tags = cmd.StringSlice("tags")
 					}
 					record := cfcmd.CreateOrUpdateDNSRecord(*params)
+					if cmd.Bool("print-json") {
+						cfcmd.PrintCommandResultAsJson(record)
+						return cfcmd.Error
+					}
 					printDnsRecord(record)
 					err = cfcmd.Error
 				}

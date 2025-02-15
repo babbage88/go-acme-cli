@@ -141,7 +141,7 @@ func (p *prettyPrinter) PrettyPrintJson(data []byte) {
 	fmt.Println()
 }
 
-func Print(s ...any) {
+func Print(s string) {
 	const (
 		infoColor = int32(92)
 	)
