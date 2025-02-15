@@ -15,8 +15,8 @@ import (
 func printDnsRecordsTable(records []cloudflare.DNSRecord) {
 	var colorInt int32 = 97
 	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 1, ' ', 0)
-	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
-	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t\x1b[0m\n", colorInt)
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn", "Comment")
+	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t-------\x1b[0m\n", colorInt)
 	for _, v := range records {
 		switch v.Type {
 		case "A":
@@ -26,7 +26,7 @@ func printDnsRecordsTable(records []cloudflare.DNSRecord) {
 		default:
 			colorInt = int32(97)
 		}
-		fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn))
+		fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn), v.Comment)
 	}
 	tw.Flush()
 }
@@ -43,9 +43,9 @@ func printDnsRecord(record cloudflare.DNSRecord) {
 		colorInt = int32(97)
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 1, ' ', 0)
-	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn")
-	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t\x1b[0m\n", colorInt)
-	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, record.ID, record.Name, record.Content, record.Type, pretty.DateTimeSting(record.CreatedOn), pretty.DateTimeSting(record.ModifiedOn))
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn", "Comment")
+	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t-------\x1b[0m\n", colorInt)
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, record.ID, record.Name, record.Content, record.Type, pretty.DateTimeSting(record.CreatedOn), pretty.DateTimeSting(record.ModifiedOn), record.Comment)
 	tw.Flush()
 }
 
@@ -265,7 +265,7 @@ func GetDnsSubCommands() []*cli.Command {
 						params.Proxied = &proxied
 					}
 					if cmd.IsSet("comment") {
-						comment := cmd.String("proxied")
+						comment := cmd.String("comment")
 						params.Comment = &comment
 					}
 					if cmd.IsSet("tags") {
