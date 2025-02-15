@@ -182,6 +182,12 @@ func GetDnsSubCommands() []*cli.Command {
 					Usage:   "Return list of all records that match query params",
 					Value:   false,
 				},
+				&cli.BoolFlag{
+					Name:    "print-json",
+					Aliases: []string{"show-json"},
+					Usage:   "Return list of all records that match query params",
+					Value:   false,
+				},
 			},
 			Category:              "dns",
 			EnableShellCompletion: true,
@@ -218,11 +224,15 @@ func GetDnsSubCommands() []*cli.Command {
 						params.Tags = cmd.StringSlice("tags")
 					}
 					records, _ := cfcmd.ListDNSRecords(*params)
-					printDnsRecordsTable(records)
+					cfcmd.PrintDnsRecordsTable(records)
 					return cfcmd.Error
 				}
 				records, _ := cfcmd.ListDNSRecords(*params)
-				printDnsRecordsTable(records)
+				if cmd.Bool("print-json") {
+					cfcmd.PrintCommandResultAsJson(records)
+					return cfcmd.Error
+				}
+				cfcmd.PrintDnsRecordsTable(records)
 				return cfcmd.Error
 			},
 		},

@@ -2,9 +2,12 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"text/tabwriter"
 
+	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v3"
@@ -20,13 +23,14 @@ type GoInfraCli struct {
 
 type CloudflareCommandUtils struct {
 	ZomeId    string          `json:"zoneId"`
+	ZoneName  string          `json:"zoneName"`
 	EnvFile   string          `json:"envFile"`
 	Error     error           `json:"error"`
 	ApiClient *cloudflare.API `json:"clouflareApi"`
 }
 
 func NewCloudflareCommand(envfile string, domainName string) *CloudflareCommandUtils {
-	cfcmd := &CloudflareCommandUtils{EnvFile: envfile}
+	cfcmd := &CloudflareCommandUtils{EnvFile: envfile, ZoneName: domainName}
 	cfcmd.Error = godotenv.Load(cfcmd.EnvFile)
 	cfcmd.NewApiClient()
 	if cfcmd.Error == nil {
@@ -75,7 +79,27 @@ func (cfcmd *CloudflareCommandUtils) CreateOrUpdateDNSRecord(params any) cloudfl
 	return record
 }
 
-func (cfcmd CloudflareCommandUtils) DeleteCloudflareRecord(recordId string) {
+func (cfcmd *CloudflareCommandUtils) PrintDnsRecordsTable(records []cloudflare.DNSRecord) {
+	var colorInt int32 = 97
+	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 1, ' ', 0)
+	fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, "ID", "Name", "Content", "Type", "CreatedOn", "ModifiedOn", "Comment")
+	fmt.Fprintf(tw, "\x1b[1;%dm--\t----\t-------\t----\t---------\t----------\t-------\x1b[0m\n", colorInt)
+	for _, v := range records {
+		switch v.Type {
+		case "A":
+			colorInt = int32(96)
+		case "CNAME":
+			colorInt = int32(92)
+		default:
+			colorInt = int32(97)
+		}
+		fmt.Fprintf(tw, "\x1b[1;%dm%s\t%s\t%s\t%s\t%s\t%s\t%s\x1b[0m\n", colorInt, v.ID, v.Name, v.Content, v.Type, pretty.DateTimeSting(v.CreatedOn), pretty.DateTimeSting(v.ModifiedOn), v.Comment)
+	}
+	tw.Flush()
+	fmt.Printf("\x1b[1;%dm\nFound %d records in ZoneID: %s Name: %s\x1b[0m\n", colorInt, len(records), cfcmd.ZomeId, cfcmd.ZoneName)
+}
+
+func (cfcmd *CloudflareCommandUtils) DeleteCloudflareRecord(recordId string) {
 	cfcmd.Error = cfcmd.ApiClient.DeleteDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordId)
 	if cfcmd.Error == nil {
 		msg := fmt.Sprintf("DNS RecordID: %s in Zone: %s has been deleted succesfully", recordId, cfcmd.ZomeId)
@@ -83,26 +107,22 @@ func (cfcmd CloudflareCommandUtils) DeleteCloudflareRecord(recordId string) {
 	}
 }
 
+func (cfcmd *CloudflareCommandUtils) PrintCommandResultAsJson(result any) string {
+	fmt.Println()
+	response, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		cfcmd.Error = err
+		msg := fmt.Sprintf("error marshaling result into json. error: %s", err.Error())
+		logger.Error(msg)
+	}
+	recordsJson := fmt.Sprintf("%s\n", (string(response)))
+	pretty.Print(recordsJson)
+
+	return recordsJson
+}
+
 func (author *UrFaveCliDocumentationSucks) String() string {
 	return fmt.Sprintf("Name: %s Email: %s", author.Name, author.Email)
-}
-
-func (c *GoInfraCli) SubCommands() []*cli.Command {
-	return c.BaseCommand.Commands
-}
-
-func (c *GoInfraCli) Authors(a *UrFaveCliDocumentationSucks) string {
-	return a.String()
-}
-
-func (c *GoInfraCli) GetDnsSubCommands(sub *cli.Command) error {
-	start := len(c.BaseCommand.Commands)
-	c.BaseCommand.Commands = append(c.BaseCommand.Commands, sub)
-	if len(c.BaseCommand.Commands) == start {
-		err := fmt.Errorf("error adding SubCommands, length %d did not change", start)
-		return err
-	}
-	return nil
 }
 
 func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, zoneId string, params T) (cloudflare.DNSRecord, error) {
