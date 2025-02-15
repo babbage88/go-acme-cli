@@ -1,6 +1,6 @@
 DOCKER_HUB:=ghcr.io/babbage88/goinfacli:
 BIN_NAME:=goinfracli
-INSTALL_PATH:=$${GOPATH}bin
+INSTALL_PATH:=$${GOPATH}/bin
 ENV_FILE:=.env
 MIG:=$(shell date '+%m%d%Y.%H%M%S')
 SHELL := /bin/bash

@@ -2,9 +2,11 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v3"
@@ -50,6 +52,11 @@ type UrFaveCliDocumentationSucks struct {
 func (cfcmd CloudflareCommandUtils) UpdateCloudflareDnsRecord(recordUpdateParams cloudflare.UpdateDNSRecordParams) cloudflare.DNSRecord {
 	record := cloudflare.DNSRecord{}
 
+	paramb, err := json.Marshal(recordUpdateParams)
+	if err != nil {
+		pretty.PrintErrorf("error marshaling json %s", err.Error())
+	}
+	pretty.Print(string(paramb))
 	record, cfcmd.Error = cfcmd.ApiClient.UpdateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordUpdateParams)
 	return record
 }

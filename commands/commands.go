@@ -134,6 +134,7 @@ func cfDnsUpdateFlags() []cli.Flag {
 		&cli.IntFlag{
 			Name:    "ttl",
 			Aliases: []string{"record-ttl"},
+			Value:   3600,
 			Usage:   "new ttl for recird",
 		},
 		&cli.BoolFlag{
@@ -235,13 +236,14 @@ func GetDnsSubCommands() []*cli.Command {
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					params := cloudflare.UpdateDNSRecordParams{ID: cmd.String("record-id")}
+					params := &cloudflare.UpdateDNSRecordParams{ID: cmd.String("record-id")}
 					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
 					if cfcmd.Error != nil {
 						logger.Error(cfcmd.Error.Error())
 						return cfcmd.Error
 					}
 					if cmd.IsSet("new-content") {
+						logger.Debug(cmd.String("new-content"))
 						params.Content = cmd.String("new-content")
 					}
 					if cmd.IsSet("record-name") {
@@ -269,7 +271,8 @@ func GetDnsSubCommands() []*cli.Command {
 					if cmd.IsSet("tags") {
 						params.Tags = cmd.StringSlice("tags")
 					}
-					cfcmd.UpdateCloudflareDnsRecord(params)
+					record := cfcmd.UpdateCloudflareDnsRecord(*params)
+					printDnsRecord(record)
 					err = cfcmd.Error
 				}
 				return err
