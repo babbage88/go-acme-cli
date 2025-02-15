@@ -242,24 +242,13 @@ func GetDnsSubCommands() []*cli.Command {
 			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
-				if cmd.NArg() == 0 {
-					records, err := GetCloudflareDnsListByDomainName(cmd.String("env-file"), cmd.String("domain-name"))
-					if err != nil {
-						msg := fmt.Sprintf("Error retrieving DNS Records %s", err.Error())
-						slog.Error(msg)
-						return err
-					}
-					printDnsRecordsTable(records)
-					return err
+				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+				if cfcmd.Error != nil {
+					logger.Error(cfcmd.Error.Error())
+					return cfcmd.Error
 				}
-
-				records, err := GetCloudflareDnsListByDomainName(cmd.Args().Get(0), cmd.Args().Get(1))
-				if err != nil {
-					msg := pretty.PrettyErrorLogString("Error retrieving DNS Records %s", err.Error())
-					pretty.PrintError(msg)
-				}
-				printDnsRecordsTable(records)
-				return err
+				cfcmd.DeleteCloudflareRecord(cmd.String("rm-record-id"))
+				return cfcmd.Error
 			},
 		},
 	}
