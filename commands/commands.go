@@ -251,6 +251,60 @@ func GetDnsSubCommands() []*cli.Command {
 				return cfcmd.Error
 			},
 		},
+		{
+			Name:                  "create",
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Aliases:               []string{"add", "create-record", "new-record"},
+			Category:              "dns",
+			EnableShellCompletion: true,
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					params := &cloudflare.CreateDNSRecordParams{}
+					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					if cfcmd.Error != nil {
+						logger.Error(cfcmd.Error.Error())
+						return cfcmd.Error
+					}
+					if cmd.IsSet("new-content") {
+						logger.Debug(cmd.String("new-content"))
+						params.Content = cmd.String("new-content")
+					}
+					if cmd.IsSet("record-name") {
+						params.Name = cmd.String("record-name")
+					}
+					if cmd.IsSet("type") {
+						params.Type = cmd.String("type")
+					}
+					if cmd.IsSet("priority") {
+						priority64 := cmd.Uint("priority")
+						pr16 := uint16(priority64)
+						params.Priority = &pr16
+					}
+					if cmd.IsSet("ttl") {
+						params.TTL = int(cmd.Int("ttl"))
+					}
+					if cmd.IsSet("proxied") {
+						proxied := cmd.Bool("proxied")
+						params.Proxied = &proxied
+					}
+					if cmd.IsSet("comment") {
+						params.Comment = cmd.String("comment")
+					}
+					if cmd.IsSet("tags") {
+						params.Tags = cmd.StringSlice("tags")
+					}
+					record := cfcmd.CreateOrUpdateDNSRecord(*params)
+					if cfcmd.Error != nil {
+						msg := fmt.Sprintf("Error creating new DNS record: %s in Zone: %s error: %s", cmd.String("record-name"), cfcmd.ZomeId, cfcmd.Error.Error())
+						logger.Error(msg)
+					}
+					printDnsRecord(record)
+					err = cfcmd.Error
+				}
+				return err
+			},
+		},
 	}
 	return dnsSubCmds
 }
