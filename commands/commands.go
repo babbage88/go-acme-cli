@@ -18,15 +18,7 @@ func DnsBaseCommand() []*cli.Command {
 			Version:               versionNumber,
 			Authors:               cfDnsComandAuthors(),
 			Commands:              GetDnsSubCommands(),
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    "domain-name",
-					Aliases: []string{"n"},
-					Value:   "trahan.dev",
-					Sources: cli.EnvVars("CF_DOMAIN_NAME"),
-					Usage:   "Cloudflare Zone Id to retrieve records for.",
-				},
-			},
+			Flags:                 cfDnsSubcommandFlags(),
 		},
 	}
 	return cmd
@@ -46,14 +38,20 @@ func CoreInfraCommand() *cli.Command {
 				Usage:   ".env file to use to load Cloudflare API keys and Zone ID",
 			},
 		},
-		//Commands:              GetDnsSubCommands(),
 		Commands: DnsBaseCommand(),
 	}
 	return cmd
 }
 
-func cfDnsUpdateFlags() []cli.Flag {
+func cfDnsSubcommandFlags() []cli.Flag {
 	flags := []cli.Flag{
+		&cli.StringFlag{
+			Name:    "domain-name",
+			Aliases: []string{"n"},
+			Value:   "trahan.dev",
+			Sources: cli.EnvVars("CF_DOMAIN_NAME"),
+			Usage:   "Cloudflare Zone Id to retrieve records for.",
+		},
 		&cli.StringFlag{
 			Name:     "record-id",
 			Aliases:  []string{"i"},
@@ -67,9 +65,8 @@ func cfDnsUpdateFlags() []cli.Flag {
 			Usage:   "The new content or Value for the record.",
 		},
 		&cli.StringFlag{
-			Name:    "record-name",
-			Aliases: []string{"n"},
-			Usage:   "The name for the dns record",
+			Name:  "record-name",
+			Usage: "The name for the dns record",
 		},
 		&cli.StringFlag{
 			Name:    "type",
@@ -148,12 +145,11 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:     "list",
-			Version:  versionNumber,
-			Authors:  cfDnsComandAuthors(),
-			Aliases:  []string{"list-records"},
-			Category: "dns",
-			// Flags:                 GlobalCommandFlags(),
+			Name:                  "list",
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Aliases:               []string{"list-records"},
+			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
@@ -182,7 +178,6 @@ func GetDnsSubCommands() []*cli.Command {
 			Authors:               cfDnsComandAuthors(),
 			Aliases:               []string{"set", "update-record"},
 			Category:              "dns",
-			Flags:                 cfDnsUpdateFlags(),
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
@@ -233,7 +228,6 @@ func GetDnsSubCommands() []*cli.Command {
 			Version:               versionNumber,
 			Authors:               cfDnsComandAuthors(),
 			Aliases:               []string{"rm", "remove-record"},
-			Flags:                 cfDnsUpdateFlags(),
 			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
