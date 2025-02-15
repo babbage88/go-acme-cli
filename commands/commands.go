@@ -53,13 +53,6 @@ func cfDnsSubcommandFlags() []cli.Flag {
 			Usage:   "Cloudflare Zone Id to retrieve records for.",
 		},
 		&cli.StringFlag{
-			Name:     "record-id",
-			Aliases:  []string{"i"},
-			Required: true,
-			Sources:  cli.EnvVars("CF_REC_UPDATE_ID"),
-			Usage:    "The ID for Record you want to update.",
-		},
-		&cli.StringFlag{
 			Name:    "new-content",
 			Aliases: []string{"c"},
 			Usage:   "The new content or Value for the record.",
@@ -173,9 +166,18 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:                  "update",
-			Version:               versionNumber,
-			Authors:               cfDnsComandAuthors(),
+			Name:    "update",
+			Version: versionNumber,
+			Authors: cfDnsComandAuthors(),
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:     "update-record-id",
+					Required: true,
+					Aliases:  []string{"record-id"},
+					Sources:  cli.EnvVars("CF_REC_UPDATE_ID"),
+					Usage:    "The ID for Record you want to update.",
+				},
+			},
 			Aliases:               []string{"set", "update-record"},
 			Category:              "dns",
 			EnableShellCompletion: true,
@@ -224,9 +226,18 @@ func GetDnsSubCommands() []*cli.Command {
 			},
 		},
 		{
-			Name:                  "delete",
-			Version:               versionNumber,
-			Authors:               cfDnsComandAuthors(),
+			Name:    "delete",
+			Version: versionNumber,
+			Authors: cfDnsComandAuthors(),
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:     "rm-record-id",
+					Aliases:  []string{"remove-id", "remove-record-id", "delete-record-id"},
+					Required: true,
+					Sources:  cli.EnvVars("CF_RECORD_DELETE_ID"),
+					Usage:    "The ID for Record you want to update.",
+				},
+			},
 			Aliases:               []string{"rm", "remove-record"},
 			Category:              "dns",
 			EnableShellCompletion: true,

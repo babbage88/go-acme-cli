@@ -61,6 +61,14 @@ func (cfcmd CloudflareCommandUtils) UpdateCloudflareDnsRecord(recordUpdateParams
 	return record
 }
 
+func (cfcmd CloudflareCommandUtils) DeleteCloudflareRecord(recordId string) {
+	cfcmd.Error = cfcmd.ApiClient.DeleteDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordId)
+	if cfcmd.Error == nil {
+		msg := fmt.Sprintf("DNS RecordID: %s in Zone: %s has been deleted succesfully", recordId, cfcmd.ZomeId)
+		logger.Info(msg)
+	}
+}
+
 func (author *UrFaveCliDocumentationSucks) String() string {
 	return fmt.Sprintf("Name: %s Email: %s", author.Name, author.Email)
 }

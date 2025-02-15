@@ -59,6 +59,16 @@ func UpdateCloudflareDnsRecord(envfile string, zoneId string, recordUpdateParams
 	return record, err
 }
 
+func DeleteCloudFlareDnsRecord(envfile string, zoneId string, recordId string) error {
+	api, err := NewCloudflareAPIClient(envfile)
+	if err != nil {
+		return err
+	}
+	slog.Info("Deleting Cloudflare DNS Record", slog.String("ZoneID", zoneId), slog.String("RecordID", recordId))
+	err = api.DeleteDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), recordId)
+	return err
+}
+
 func GetCloudflareDnsListByDomainName(envfile string, domainName string) ([]cloudflare.DNSRecord, error) {
 	records := make([]cloudflare.DNSRecord, 0)
 	api, err := NewCloudflareAPIClient(envfile)
