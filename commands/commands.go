@@ -218,7 +218,7 @@ func GetDnsSubCommands() []*cli.Command {
 					if cmd.IsSet("tags") {
 						params.Tags = cmd.StringSlice("tags")
 					}
-					record := cfcmd.UpdateCloudflareDnsRecord(*params)
+					record := cfcmd.CreateOrUpdateDNSRecord(*params)
 					printDnsRecord(record)
 					err = cfcmd.Error
 				}

@@ -61,6 +61,21 @@ func (cfcmd CloudflareCommandUtils) UpdateCloudflareDnsRecord(recordUpdateParams
 	return record
 }
 
+func (cfcmd *CloudflareCommandUtils) CreateOrUpdateDNSRecord(params any) cloudflare.DNSRecord {
+	record := cloudflare.DNSRecord{}
+
+	switch v := any(params).(type) {
+	case cloudflare.UpdateDNSRecordParams:
+		record, cfcmd.Error = createOrUpdateCloudflareDnsRecord(*cfcmd.ApiClient, cfcmd.ZomeId, v)
+	case cloudflare.CreateDNSRecordParams:
+		record, cfcmd.Error = createOrUpdateCloudflareDnsRecord(*cfcmd.ApiClient, cfcmd.ZomeId, v)
+	default:
+		cfcmd.Error = fmt.Errorf("unsupported DNS record operation: %T", params)
+	}
+
+	return record
+}
+
 func (cfcmd CloudflareCommandUtils) DeleteCloudflareRecord(recordId string) {
 	cfcmd.Error = cfcmd.ApiClient.DeleteDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordId)
 	if cfcmd.Error == nil {
@@ -89,4 +104,29 @@ func (c *GoInfraCli) GetDnsSubCommands(sub *cli.Command) error {
 		return err
 	}
 	return nil
+}
+
+func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, zoneId string, params T) (cloudflare.DNSRecord, error) {
+	record := cloudflare.DNSRecord{}
+	var err error = nil
+	switch v := any(params).(type) {
+	case cloudflare.UpdateDNSRecordParams:
+		record, err = api.UpdateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), v)
+		if err != nil {
+			msg := fmt.Sprintf("Error updating DNS record %s in Zone: %s err: %s", v.ID, zoneId, err.Error())
+			logger.Error(msg)
+			return record, err
+		}
+		return record, err
+	case cloudflare.CreateDNSRecordParams:
+		record, err = api.CreateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), v)
+		if err != nil {
+			msg := fmt.Sprintf("Error updating DNS record %s in Zone: %s err: %s", v.Name, zoneId, err.Error())
+			logger.Error(msg)
+			return record, err
+		}
+	default:
+		err = fmt.Errorf("unsupported DNS record operation %T. Must use cloudflare.UpdateDNSRecordParams or CreateDNSRecordParams.", params)
+	}
+	return record, err
 }
