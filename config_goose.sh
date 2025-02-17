@@ -1,0 +1,3 @@
+#!/bin/bash
+source .env
+export GOOSE_DBSTRING GOOSE_MIGRATION_DIR GOOSE_DRIVER
