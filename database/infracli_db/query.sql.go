@@ -114,9 +114,9 @@ const getRecordIdByRecordUid = `-- name: GetRecordIdByRecordUid :one
 SELECT id FROM dns_records WHERE record_uid = ? LIMIT 1
 `
 
-func (q *Queries) GetRecordIdByRecordUid(ctx context.Context, recordUid string) (sql.NullInt64, error) {
+func (q *Queries) GetRecordIdByRecordUid(ctx context.Context, recordUid string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getRecordIdByRecordUid, recordUid)
-	var id sql.NullInt64
+	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
@@ -138,7 +138,7 @@ WHERE r.zone_uid = ?
 `
 
 type GetRecordsByZoneIdRow struct {
-	ID        sql.NullInt64
+	ID        int64
 	RecordUid string
 	ZoneID    int64
 	ZoneUid   string
@@ -195,9 +195,9 @@ const getZoneIdByZoneUid = `-- name: GetZoneIdByZoneUid :one
 SELECT id FROM dns_zones WHERE zone_uid = ? LIMIT 1
 `
 
-func (q *Queries) GetZoneIdByZoneUid(ctx context.Context, zoneUid string) (sql.NullInt64, error) {
+func (q *Queries) GetZoneIdByZoneUid(ctx context.Context, zoneUid string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getZoneIdByZoneUid, zoneUid)
-	var id sql.NullInt64
+	var id int64
 	err := row.Scan(&id)
 	return id, err
 }

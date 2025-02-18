@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE dns_zones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    zone_uid TEXT UNIQUE,
+    zone_uid TEXT UNIQUE NOT NULL,
     domain_name TEXT NOT NULL
 );
 -- +goose StatementEnd
@@ -25,7 +25,7 @@ VALUES (1, 'A'),
 -- +goose StatementBegin
 CREATE TABLE dns_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    record_uid TEXT UNIQUE,
+    record_uid TEXT UNIQUE NOT NULL,
     zone_id INTEGER NOT NULL,
     zone_uid TEXT NOT NULL,
     type_id INTEGER NOT NULL,
