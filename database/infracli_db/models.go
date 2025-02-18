@@ -9,7 +9,7 @@ import (
 )
 
 type DnsRecord struct {
-	ID        int64
+	ID        sql.NullInt64
 	RecordUid string
 	ZoneID    int64
 	ZoneUid   string
@@ -22,7 +22,7 @@ type DnsRecord struct {
 }
 
 type DnsZone struct {
-	ID         int64
+	ID         sql.NullInt64
 	ZoneUid    string
 	DomainName string
 }

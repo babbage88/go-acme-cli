@@ -27,20 +27,20 @@ LEFT JOIN record_tags t ON r.id = t.record_id
 WHERE r.zone_uid = ?;
 
 -- name: CreateDnsZone :exec
-INSERT INTO dns_zones (zone_uid, domain_name) VALUES(?, ?);
+INSERT OR REPLACE INTO dns_zones (zone_uid, domain_name) VALUES(?, ?);
 
 -- name: CreateDnsRecord :exec
-INSERT INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
+INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
 VALUES(?, ?, ?, ?, ?, ?);
 
 -- name: CreateRecordTypeMapping :exec
-INSERT INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?);
+INSERT OR REPLACE INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?);
 
 -- name: CreateRecordComment :exec
-INSERT INTO record_comments (record_id, comment) VALUES(?, ?);
+INSERT OR REPLACE INTO record_comments (record_id, comment) VALUES(?, ?);
 
 -- name: CreateRecordTag :exec
-INSERT INTO record_tags (record_id, tags) VALUES(?, ?);
+INSERT OR REPLACE INTO record_tags (record_id, tags) VALUES(?, ?);
 
 -- name: UpdateDnsRecordByRecordUid :one
 UPDATE dns_records

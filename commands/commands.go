@@ -134,8 +134,20 @@ func GetDnsSubCommands() []*cli.Command {
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					err := getZoneIdCmd(cmd.String("env-file"), cmd.String("domain-name"))
-					return err
+					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					if cfcmd.Error != nil {
+						logger.Error(cfcmd.Error.Error())
+						return cfcmd.Error
+					}
+
+					// err := getZoneIdCmd(cmd.String("env-file"), cmd.String("domain-name"))
+					// cfcmd.InitializeDatabaseConnection()
+					// defer cfcmd.DbConn.Close()
+					cfcmd.CreateZoneInDb()
+					// cfcmd.PrintZoneIdTable()
+					zns := cfcmd.GetZonesFromDb()
+					cfcmd.PrintDnsZoneDbRecords(zns)
+					return cfcmd.Error
 				}
 				err = getZoneIdCmd(cmd.Args().Get(0), cmd.Args().Get(1))
 				return err
@@ -193,7 +205,7 @@ func GetDnsSubCommands() []*cli.Command {
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
-				var params = &cloudflare.ListDNSRecordsParams{}
+				params := &cloudflare.ListDNSRecordsParams{}
 				if cfcmd.Error != nil {
 					logger.Error(cfcmd.Error.Error())
 					return cfcmd.Error

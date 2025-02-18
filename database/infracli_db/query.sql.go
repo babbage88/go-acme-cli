@@ -11,7 +11,7 @@ import (
 )
 
 const createDnsRecord = `-- name: CreateDnsRecord :exec
-INSERT INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
+INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
 VALUES(?, ?, ?, ?, ?, ?)
 `
 
@@ -37,7 +37,7 @@ func (q *Queries) CreateDnsRecord(ctx context.Context, arg CreateDnsRecordParams
 }
 
 const createDnsZone = `-- name: CreateDnsZone :exec
-INSERT INTO dns_zones (zone_uid, domain_name) VALUES(?, ?)
+INSERT OR REPLACE INTO dns_zones (zone_uid, domain_name) VALUES(?, ?)
 `
 
 type CreateDnsZoneParams struct {
@@ -51,7 +51,7 @@ func (q *Queries) CreateDnsZone(ctx context.Context, arg CreateDnsZoneParams) er
 }
 
 const createRecordComment = `-- name: CreateRecordComment :exec
-INSERT INTO record_comments (record_id, comment) VALUES(?, ?)
+INSERT OR REPLACE INTO record_comments (record_id, comment) VALUES(?, ?)
 `
 
 type CreateRecordCommentParams struct {
@@ -65,7 +65,7 @@ func (q *Queries) CreateRecordComment(ctx context.Context, arg CreateRecordComme
 }
 
 const createRecordTag = `-- name: CreateRecordTag :exec
-INSERT INTO record_tags (record_id, tags) VALUES(?, ?)
+INSERT OR REPLACE INTO record_tags (record_id, tags) VALUES(?, ?)
 `
 
 type CreateRecordTagParams struct {
@@ -79,7 +79,7 @@ func (q *Queries) CreateRecordTag(ctx context.Context, arg CreateRecordTagParams
 }
 
 const createRecordTypeMapping = `-- name: CreateRecordTypeMapping :exec
-INSERT INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?)
+INSERT OR REPLACE INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?)
 `
 
 type CreateRecordTypeMappingParams struct {
@@ -114,9 +114,9 @@ const getRecordIdByRecordUid = `-- name: GetRecordIdByRecordUid :one
 SELECT id FROM dns_records WHERE record_uid = ? LIMIT 1
 `
 
-func (q *Queries) GetRecordIdByRecordUid(ctx context.Context, recordUid string) (int64, error) {
+func (q *Queries) GetRecordIdByRecordUid(ctx context.Context, recordUid string) (sql.NullInt64, error) {
 	row := q.db.QueryRowContext(ctx, getRecordIdByRecordUid, recordUid)
-	var id int64
+	var id sql.NullInt64
 	err := row.Scan(&id)
 	return id, err
 }
@@ -138,7 +138,7 @@ WHERE r.zone_uid = ?
 `
 
 type GetRecordsByZoneIdRow struct {
-	ID        int64
+	ID        sql.NullInt64
 	RecordUid string
 	ZoneID    int64
 	ZoneUid   string
@@ -195,9 +195,9 @@ const getZoneIdByZoneUid = `-- name: GetZoneIdByZoneUid :one
 SELECT id FROM dns_zones WHERE zone_uid = ? LIMIT 1
 `
 
-func (q *Queries) GetZoneIdByZoneUid(ctx context.Context, zoneUid string) (int64, error) {
+func (q *Queries) GetZoneIdByZoneUid(ctx context.Context, zoneUid string) (sql.NullInt64, error) {
 	row := q.db.QueryRowContext(ctx, getZoneIdByZoneUid, zoneUid)
-	var id int64
+	var id sql.NullInt64
 	err := row.Scan(&id)
 	return id, err
 }

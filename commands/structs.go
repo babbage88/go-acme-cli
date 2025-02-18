@@ -2,24 +2,21 @@ package commands
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"text/tabwriter"
 
+	"github.com/babbage88/go-acme-cli/database/infracli_db"
 	"github.com/babbage88/go-acme-cli/internal/pretty"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
-	"github.com/urfave/cli/v3"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const versionNumber = "v1.0.0"
-
-type GoInfraCli struct {
-	Name        string       `json:"name"`
-	BaseCommand *cli.Command `json:"baseCmd"`
-	Version     string       `json:"version"`
-}
 
 type CloudflareCommandUtils struct {
 	ZomeId    string          `json:"zoneId"`
@@ -27,6 +24,7 @@ type CloudflareCommandUtils struct {
 	EnvFile   string          `json:"envFile"`
 	Error     error           `json:"error"`
 	ApiClient *cloudflare.API `json:"clouflareApi"`
+	DbConn    *sql.DB         `json:"db"`
 }
 
 func NewCloudflareCommand(envfile string, domainName string) *CloudflareCommandUtils {
@@ -41,7 +39,6 @@ func NewCloudflareCommand(envfile string, domainName string) *CloudflareCommandU
 }
 
 func (cf *CloudflareCommandUtils) NewApiClient() {
-
 	cf.Error = godotenv.Load(cf.EnvFile)
 	cf.ApiClient, cf.Error = cloudflare.NewWithAPIToken(os.Getenv("CLOUDFLARE_DNS_API_TOKEN"))
 }
@@ -52,20 +49,20 @@ type UrFaveCliDocumentationSucks struct {
 }
 
 func (cfcmd *CloudflareCommandUtils) ListDNSRecords(params cloudflare.ListDNSRecordsParams) ([]cloudflare.DNSRecord, *cloudflare.ResultInfo) {
-	var records = []cloudflare.DNSRecord{}
-	var results = &cloudflare.ResultInfo{}
+	records := []cloudflare.DNSRecord{}
+	results := &cloudflare.ResultInfo{}
 	records, results, cfcmd.Error = cfcmd.ApiClient.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), params)
 	return records, results
 }
 
 func (cfcmd *CloudflareCommandUtils) GetDnsRecord(recordId string) cloudflare.DNSRecord {
-	var record = cloudflare.DNSRecord{}
+	record := cloudflare.DNSRecord{}
 	record, cfcmd.Error = cfcmd.ApiClient.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(cfcmd.ZomeId), recordId)
 	return record
 }
 
 func (cfcmd *CloudflareCommandUtils) CreateOrUpdateDNSRecord(params any) cloudflare.DNSRecord {
-	var record = cloudflare.DNSRecord{}
+	record := cloudflare.DNSRecord{}
 
 	switch v := any(params).(type) {
 	case cloudflare.UpdateDNSRecordParams:
@@ -121,12 +118,83 @@ func (cfcmd *CloudflareCommandUtils) PrintCommandResultAsJson(result any) string
 	return recordsJson
 }
 
+func (cfcmd *CloudflareCommandUtils) InitializeDatabaseConnection() {
+	cfcmd.Error = godotenv.Load(cfcmd.EnvFile)
+
+	if cfcmd.Error != nil {
+		msg := fmt.Sprintf("error loading .env: %s", cfcmd.Error.Error())
+		logger.Error(msg)
+	}
+
+	dbfile := os.Getenv("SQLITE_DB_PATH")
+
+	if dbfile == "" {
+		logger.Error("SQLITE_DB_PATH is not set")
+	}
+
+	cfcmd.DbConn, cfcmd.Error = sql.Open("sqlite3", dbfile)
+	if cfcmd.Error != nil {
+		log.Fatalf("Failed to open database: %v", cfcmd.Error.Error())
+	}
+}
+
+func (cfcmd *CloudflareCommandUtils) GetZonesFromDb() []infracli_db.DnsZone {
+	if cfcmd.DbConn == nil {
+		cfcmd.InitializeDatabaseConnection()
+	}
+	queries := infracli_db.New(cfcmd.DbConn)
+	zones, err := queries.GetZonesFromDb(context.Background())
+	cfcmd.Error = err
+	return zones
+}
+
+func (cfcmd *CloudflareCommandUtils) CreateZoneInDb() {
+	if cfcmd.DbConn == nil {
+		cfcmd.InitializeDatabaseConnection()
+	}
+	params := infracli_db.CreateDnsZoneParams{ZoneUid: cfcmd.ZomeId, DomainName: cfcmd.ZoneName}
+	queries := infracli_db.New(cfcmd.DbConn)
+
+	cfcmd.Error = queries.CreateDnsZone(context.Background(), params)
+	if cfcmd.Error != nil {
+		log.Fatalf("Failed to create DNS zone: %v", cfcmd.Error.Error())
+	}
+}
+
+func (cfcmd *CloudflareCommandUtils) PrintZoneIdTable() error {
+	var colorInt int32 = 92
+	tw := tabwriter.NewWriter(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
+	fmt.Fprintf(tw, "\x1b[1;%dm", colorInt)
+	fmt.Fprintf(tw, "\tZoneName\t\tZoneID\n")
+	fmt.Fprintf(tw, "--------\t\t------\n")
+	fmt.Fprintf(tw, "%s\t\t%s\n", cfcmd.ZoneName, cfcmd.ZomeId)
+	fmt.Fprintf(tw, "\x1b[0m")
+	err := tw.Flush()
+	return err
+}
+
+func (cfcmd *CloudflareCommandUtils) PrintDnsZoneDbRecords(zones []infracli_db.DnsZone) error {
+	// var colorInt int32 = 97
+	tw := tabwriter.NewWriter(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
+	// fmt.Fprintf(tw, "\x1b[1;%dm", colorInt)
+	fmt.Fprintf(tw, "ID\t\tZoneName\t\tZoneID\n")
+	fmt.Fprintf(tw, "--\t\t--------\t\t------\n")
+
+	for _, v := range zones {
+		fmt.Printf("%d %s %s\n", v.ID, v.DomainName, v.ZoneUid)
+		fmt.Fprintf(tw, "%d\t\t%s\t\t%s\n", v.ID, v.DomainName, v.ZoneUid)
+	}
+	// fmt.Fprintf(tw, "\x1b[0m")
+	err := tw.Flush()
+	return err
+}
+
 func (author *UrFaveCliDocumentationSucks) String() string {
 	return fmt.Sprintf("Name: %s Email: %s", author.Name, author.Email)
 }
 
 func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, zoneId string, params T) (cloudflare.DNSRecord, error) {
-	var record = cloudflare.DNSRecord{}
+	record := cloudflare.DNSRecord{}
 	var err error = nil
 	switch v := any(params).(type) {
 	case cloudflare.UpdateDNSRecordParams:

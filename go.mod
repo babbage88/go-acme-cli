@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mattn/go-sqlite3 v1.14.24
 	golang.org/x/crypto v0.32.0
 	k8s.io/api v0.32.1
 )
@@ -12,7 +13,6 @@ require (
 require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	golang.org/x/time v0.9.0 // indirect
 )
 
