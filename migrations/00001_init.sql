@@ -19,8 +19,8 @@ VALUES (1, 'A'),
 (2, 'AAAA'),
 (3, 'MX'),
 (4, 'CNAME'),
-(6, 'NS'),
-(7, 'TXT');
+(5, 'NS'),
+(6, 'TXT');
 -- +goose StatementEnd
 -- +goose StatementBegin
 CREATE TABLE dns_records (

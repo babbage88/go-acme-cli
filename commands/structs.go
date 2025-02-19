@@ -162,29 +162,29 @@ func (cfcmd *CloudflareCommandUtils) CreateZoneInDb() {
 }
 
 func (cfcmd *CloudflareCommandUtils) PrintZoneIdTable() error {
-	var colorInt int32 = 92
-	tw := tabwriter.NewWriter(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
-	fmt.Fprintf(tw, "\x1b[1;%dm", colorInt)
-	fmt.Fprintf(tw, "\tZoneName\t\tZoneID\n")
-	fmt.Fprintf(tw, "--------\t\t------\n")
-	fmt.Fprintf(tw, "%s\t\t%s\n", cfcmd.ZoneName, cfcmd.ZomeId)
-	fmt.Fprintf(tw, "\x1b[0m")
+	var colorInt int32 = 97
+	coloStartSting := fmt.Sprintf("\x1b[1;%dm", colorInt)
+	colorEndString := "\x1b[0m"
+	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tw, "%sZoneName\tZoneID%s\n", coloStartSting, colorEndString)
+	fmt.Fprintf(tw, "%s--------\t------%s\n", coloStartSting, colorEndString)
+	fmt.Fprintf(tw, "%s%s\t%s%s\n", coloStartSting, cfcmd.ZoneName, cfcmd.ZomeId, colorEndString)
 	err := tw.Flush()
 	return err
 }
 
 func (cfcmd *CloudflareCommandUtils) PrintDnsZoneDbRecords(zones []infracli_db.DnsZone) error {
-	// var colorInt int32 = 97
+	var colorInt int32 = 97
+	coloStartSting := fmt.Sprintf("\x1b[1;%dm", colorInt)
+	colorEndString := "\x1b[0m"
 	tw := tabwriter.NewWriter(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
-	// fmt.Fprintf(tw, "\x1b[1;%dm", colorInt)
-	fmt.Fprintf(tw, "ID\t\tZoneName\t\tZoneID\n")
-	fmt.Fprintf(tw, "--\t\t--------\t\t------\n")
+	fmt.Fprintf(tw, "%sID\t\tZoneName\t\tZoneID%s\n", coloStartSting, colorEndString)
+	fmt.Fprintf(tw, "%s--\t\t--------\t\t------%s\n", coloStartSting, colorEndString)
 
 	for _, v := range zones {
-		fmt.Printf("%d %s %s\n", v.ID, v.DomainName, v.ZoneUid)
-		fmt.Fprintf(tw, "%d\t\t%s\t\t%s\n", v.ID, v.DomainName, v.ZoneUid)
+		fmt.Fprintf(tw, "%s%d\t\t%s\t\t%s%s\n", coloStartSting, v.ID, v.DomainName, v.ZoneUid, colorEndString)
 	}
-	// fmt.Fprintf(tw, "\x1b[0m")
+	fmt.Fprintf(tw, "\x1b[0m")
 	err := tw.Flush()
 	return err
 }
@@ -216,4 +216,37 @@ func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, 
 		err = fmt.Errorf("unsupported DNS record operation %T. Must use cloudflare.UpdateDNSRecordParams or CreateDNSRecordParams", params)
 	}
 	return record, err
+}
+
+func (cfcmd *CloudflareCommandUtils) CreateDnsDbRecords(records []cloudflare.DNSRecord) {
+	if cfcmd.DbConn == nil {
+		cfcmd.InitializeDatabaseConnection()
+		defer cfcmd.DbConn.Close()
+	}
+	queries := infracli_db.New(cfcmd.DbConn)
+
+	for _, v := range records {
+		params := infracli_db.CreateDnsRecordParams{RecordUid: v.ID,
+			ZoneUid: cfcmd.ZomeId,
+			Name:    v.Name,
+			Content: sql.NullString{String: v.Content, Valid: true},
+		}
+		cfcmd.Error = queries.CreateDNSRecord(context.Background(), params)
+		if cfcmd.Error != nil {
+			log.Fatalf("Failed to create DNS zone: %v", cfcmd.Error.Error())
+		}
+	}
+}
+
+var recordTypeMap = map[string]int64{
+	"A":     1,
+	"AAAA":  2,
+	"MX":    3,
+	"CNAME": 4,
+	"NS":    5,
+	"TXT":   6,
+}
+
+func getDnsRecordDbType(recordType string) int64 {
+
 }

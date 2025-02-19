@@ -82,6 +82,18 @@ func cfDnsSubcommandFlags() []cli.Flag {
 			Usage:   "new ttl for recird",
 		},
 		&cli.BoolFlag{
+			Name:    "show-from-db",
+			Value:   false,
+			Aliases: []string{"ls-db"},
+			Usage:   "Show all records in local sqlite db.",
+		},
+		&cli.BoolFlag{
+			Name:    "to-db",
+			Value:   true,
+			Aliases: []string{"insert-to-db"},
+			Usage:   "Create/update records in sqlite db.",
+		},
+		&cli.BoolFlag{
 			Name:  "proxied",
 			Usage: "Whether the record is proxied via cloudflare",
 		},
@@ -140,13 +152,16 @@ func GetDnsSubCommands() []*cli.Command {
 						return cfcmd.Error
 					}
 
-					// err := getZoneIdCmd(cmd.String("env-file"), cmd.String("domain-name"))
-					// cfcmd.InitializeDatabaseConnection()
-					// defer cfcmd.DbConn.Close()
-					cfcmd.CreateZoneInDb()
-					// cfcmd.PrintZoneIdTable()
-					zns := cfcmd.GetZonesFromDb()
-					cfcmd.PrintDnsZoneDbRecords(zns)
+					if cmd.Bool("to-db") {
+						cfcmd.InitializeDatabaseConnection()
+						defer cfcmd.DbConn.Close()
+						cfcmd.CreateZoneInDb()
+					}
+					cfcmd.PrintZoneIdTable()
+					if cmd.Bool("show-from-db") {
+						zns := cfcmd.GetZonesFromDb()
+						cfcmd.PrintDnsZoneDbRecords(zns)
+					}
 					return cfcmd.Error
 				}
 				err = getZoneIdCmd(cmd.Args().Get(0), cmd.Args().Get(1))

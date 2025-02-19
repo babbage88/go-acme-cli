@@ -12,7 +12,13 @@ import (
 
 const createDnsRecord = `-- name: CreateDnsRecord :exec
 INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
-VALUES(?, ?, ?, ?, ?, ?)
+VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT (record_uid) DO 
+UPDATE SET 
+zone_uid = excluded.zone_uid,
+name = excluded.name,
+content = excluded.content,
+type_id = excluded.type_id,
+ttl = excluded.ttl
 `
 
 type CreateDnsRecordParams struct {
@@ -37,7 +43,8 @@ func (q *Queries) CreateDnsRecord(ctx context.Context, arg CreateDnsRecordParams
 }
 
 const createDnsZone = `-- name: CreateDnsZone :exec
-INSERT OR REPLACE INTO dns_zones (zone_uid, domain_name) VALUES(?, ?)
+INSERT INTO dns_zones (zone_uid, domain_name) VALUES(?, ?)
+ON CONFLICT (zone_uid) DO UPDATE SET domain_name = excluded.domain_name
 `
 
 type CreateDnsZoneParams struct {
