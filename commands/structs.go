@@ -220,40 +220,6 @@ func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, 
 	return record, err
 }
 
-/*
-func (cfcmd *CloudflareCommandUtils) CreateDnsDbRecords(records []cloudflare.DNSRecord) {
-	if cfcmd.DbConn == nil {
-		logger.Error("DbConn is nil.")
-		cfcmd.InitializeDatabaseConnection()
-		defer cfcmd.DbConn.Close()
-	}
-
-	queries := infracli_db.New(cfcmd.DbConn)
-
-	for _, v := range records {
-		recTypeId := recordTypeMap[v.Type]
-		params := infracli_db.CreateDnsRecordParams{
-			RecordUid: v.ID,
-			ZoneUid:   cfcmd.ZomeId,
-			Name:      v.Name,
-			Content:   sql.NullString{String: v.Content, Valid: true},
-			TypeID:    recTypeId,
-			Created:   sql.NullString{String: v.CreatedOn.String(), Valid: true},
-			Modified:  sql.NullString{String: v.ModifiedOn.String(), Valid: true},
-		}
-		row, err := queries.CreateDnsRecord(context.Background(), params)
-		if err != nil {
-			log.Fatalf("Failed to create DNS record: %v", cfcmd.Error.Error())
-		}
-		commentParams := infracli_db.CreateRecordCommentParams{RecordID: row.ID, Comment: sql.NullString{String: v.Comment, Valid: true}}
-		cfcmd.Error = queries.CreateRecordComment(context.Background(), commentParams)
-
-		typeMappingParams := infracli_db.CreateRecordTypeMappingParams{RecordID: row.ID, RecordTypeID: recTypeId}
-		cfcmd.Error = queries.CreateRecordTypeMapping(context.Background(), typeMappingParams)
-	}
-}
-*/
-
 func (cfcmd *CloudflareCommandUtils) CreateDnsDbRecords(records []cloudflare.DNSRecord) {
 	if cfcmd.DbConn == nil {
 		logger.Error("DbConn is nil.")

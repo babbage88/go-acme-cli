@@ -86,8 +86,8 @@ func DeleteCloudFlareDnsRecord(envfile string, zoneId string, recordId string) e
 
 func ListCloudflareDnsWithQueryParams(envfile string, domainName string, params cloudflare.ListDNSRecordsParams) ([]cloudflare.DNSRecord, *cloudflare.ResultInfo, error) {
 	records := make([]cloudflare.DNSRecord, 0)
-	//var recordss = []cloudflare.DNSRecord{}
-	var result = &cloudflare.ResultInfo{}
+	// var recordss = []cloudflare.DNSRecord{}
+	result := &cloudflare.ResultInfo{}
 	api, err := NewCloudflareAPIClient(envfile)
 	if err != nil {
 		return records, result, err
@@ -124,4 +124,34 @@ func GetAllCloudflareDnsRecordByDomain(envfile string, domainName string) ([]clo
 		return records, err
 	}
 	return records, nil
+}
+
+func CreateOrUpdateAcmeDnsRecord(api cloudflare.API, zoneId string, txtRecordName string, txtChalContent string) (cloudflare.DNSRecord, error) {
+	var err error
+	qryParams := cloudflare.ListDNSRecordsParams{Name: txtRecordName, Type: "TXT"}
+	result := &cloudflare.ResultInfo{}
+	records := make([]cloudflare.DNSRecord, 0)
+	records, result, err = api.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(zoneId), qryParams)
+	if err != nil {
+		slog.Error("error querying DNS records", slog.String("error", err.Error()))
+		return cloudflare.DNSRecord{}, err
+	}
+	if result.Count > 0 {
+		for _, v := range records {
+			params := cloudflare.UpdateDNSRecordParams{ID: v.ID, Name: txtRecordName, Content: txtChalContent}
+			record, retErr := api.UpdateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), params)
+			if retErr != nil {
+				slog.Error("Error updating records", slog.String("error", retErr.Error()))
+				return record, retErr
+			}
+			return record, nil
+		}
+	}
+	params := cloudflare.CreateDNSRecordParams{Name: txtRecordName, Content: txtChalContent}
+	record, retErr := api.CreateDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), params)
+	if retErr != nil {
+		slog.Error("Error updating records", slog.String("error", retErr.Error()))
+		return record, retErr
+	}
+	return record, nil
 }
