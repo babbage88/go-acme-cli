@@ -127,6 +127,7 @@ func (cfcmd *CloudflareCommandUtils) InitializeDatabaseConnection() {
 	}
 
 	dbfile := os.Getenv("SQLITE_DB_PATH")
+	logger.Info(fmt.Sprintf("%s", dbfile))
 
 	if dbfile == "" {
 		logger.Error("SQLITE_DB_PATH is not set")
@@ -136,6 +137,7 @@ func (cfcmd *CloudflareCommandUtils) InitializeDatabaseConnection() {
 	if cfcmd.Error != nil {
 		log.Fatalf("Failed to open database: %v", cfcmd.Error.Error())
 	}
+	logger.Info(fmt.Sprintf("%s", cfcmd.DbConn))
 }
 
 func (cfcmd *CloudflareCommandUtils) GetZonesFromDb() []infracli_db.DnsZone {
@@ -218,22 +220,89 @@ func createOrUpdateCloudflareDnsRecord[T DnsRequestHandler](api cloudflare.API, 
 	return record, err
 }
 
+/*
 func (cfcmd *CloudflareCommandUtils) CreateDnsDbRecords(records []cloudflare.DNSRecord) {
 	if cfcmd.DbConn == nil {
+		logger.Error("DbConn is nil.")
 		cfcmd.InitializeDatabaseConnection()
 		defer cfcmd.DbConn.Close()
 	}
+
 	queries := infracli_db.New(cfcmd.DbConn)
 
 	for _, v := range records {
-		params := infracli_db.CreateDnsRecordParams{RecordUid: v.ID,
-			ZoneUid: cfcmd.ZomeId,
-			Name:    v.Name,
-			Content: sql.NullString{String: v.Content, Valid: true},
+		recTypeId := recordTypeMap[v.Type]
+		params := infracli_db.CreateDnsRecordParams{
+			RecordUid: v.ID,
+			ZoneUid:   cfcmd.ZomeId,
+			Name:      v.Name,
+			Content:   sql.NullString{String: v.Content, Valid: true},
+			TypeID:    recTypeId,
+			Created:   sql.NullString{String: v.CreatedOn.String(), Valid: true},
+			Modified:  sql.NullString{String: v.ModifiedOn.String(), Valid: true},
 		}
-		cfcmd.Error = queries.CreateDNSRecord(context.Background(), params)
-		if cfcmd.Error != nil {
-			log.Fatalf("Failed to create DNS zone: %v", cfcmd.Error.Error())
+		row, err := queries.CreateDnsRecord(context.Background(), params)
+		if err != nil {
+			log.Fatalf("Failed to create DNS record: %v", cfcmd.Error.Error())
+		}
+		commentParams := infracli_db.CreateRecordCommentParams{RecordID: row.ID, Comment: sql.NullString{String: v.Comment, Valid: true}}
+		cfcmd.Error = queries.CreateRecordComment(context.Background(), commentParams)
+
+		typeMappingParams := infracli_db.CreateRecordTypeMappingParams{RecordID: row.ID, RecordTypeID: recTypeId}
+		cfcmd.Error = queries.CreateRecordTypeMapping(context.Background(), typeMappingParams)
+	}
+}
+*/
+
+func (cfcmd *CloudflareCommandUtils) CreateDnsDbRecords(records []cloudflare.DNSRecord) {
+	if cfcmd.DbConn == nil {
+		logger.Error("DbConn is nil.")
+		cfcmd.InitializeDatabaseConnection()
+		defer cfcmd.DbConn.Close()
+	}
+
+	queries := infracli_db.New(cfcmd.DbConn)
+
+	for _, v := range records {
+		recTypeId, ok := recordTypeMap[v.Type]
+		if !ok {
+			log.Fatalf("Unknown record type: %s", v.Type)
+		}
+
+		params := infracli_db.CreateDnsRecordParams{
+			RecordUid: v.ID,
+			ZoneUid:   cfcmd.ZomeId,
+			Name:      v.Name,
+			Content:   sql.NullString{String: v.Content, Valid: true},
+			TypeID:    recTypeId,
+			Ttl:       int64(v.TTL),
+			Created:   sql.NullString{String: v.CreatedOn.String(), Valid: true},
+			Modified:  sql.NullString{String: v.ModifiedOn.String(), Valid: true},
+		}
+
+		row, err := queries.CreateDnsRecord(context.Background(), params)
+		if err != nil {
+			log.Fatalf("Failed to create DNS record: %v", err)
+		}
+
+		if row.ID == 0 {
+			log.Fatalf("Invalid record ID returned from CreateDnsRecord")
+		}
+
+		commentParams := infracli_db.CreateRecordCommentParams{
+			RecordID: row.ID,
+			Comment:  sql.NullString{String: v.Comment, Valid: true},
+		}
+		if err := queries.CreateRecordComment(context.Background(), commentParams); err != nil {
+			log.Fatalf("Failed to create record comment: %v", err)
+		}
+
+		typeMappingParams := infracli_db.CreateRecordTypeMappingParams{
+			RecordID:     row.ID,
+			RecordTypeID: recTypeId,
+		}
+		if err := queries.CreateRecordTypeMapping(context.Background(), typeMappingParams); err != nil {
+			log.Fatalf("Failed to create record type mapping: %v", err)
 		}
 	}
 }
@@ -248,5 +317,5 @@ var recordTypeMap = map[string]int64{
 }
 
 func getDnsRecordDbType(recordType string) int64 {
-
+	return recordTypeMap[recordType]
 }

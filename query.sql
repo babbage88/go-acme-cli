@@ -30,15 +30,19 @@ WHERE r.zone_uid = ?;
 INSERT INTO dns_zones (zone_uid, domain_name) VALUES(?, ?)
 ON CONFLICT (zone_uid) DO UPDATE SET domain_name = excluded.domain_name;
 
--- name: CreateDnsRecord :exec
-INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
-VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT (record_uid) DO 
+-- name: CreateDnsRecord :one
+INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, modified, created, ttl)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (record_uid) DO 
 UPDATE SET 
 zone_uid = excluded.zone_uid,
 name = excluded.name,
 content = excluded.content,
 type_id = excluded.type_id,
-ttl = excluded.ttl;
+modified = excluded.modified,
+created = excluded.created,
+ttl = excluded.ttl
+RETURNING id, record_uid;
+
 
 -- name: CreateRecordTypeMapping :exec
 INSERT OR REPLACE INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?);

@@ -10,15 +10,18 @@ import (
 	"database/sql"
 )
 
-const createDnsRecord = `-- name: CreateDnsRecord :exec
-INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, ttl)
-VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT (record_uid) DO 
+const createDnsRecord = `-- name: CreateDnsRecord :one
+INSERT OR REPLACE INTO dns_records (record_uid, zone_uid, name, content, type_id, modified, created, ttl)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (record_uid) DO 
 UPDATE SET 
 zone_uid = excluded.zone_uid,
 name = excluded.name,
 content = excluded.content,
 type_id = excluded.type_id,
+modified = excluded.modified,
+created = excluded.created,
 ttl = excluded.ttl
+RETURNING id, record_uid
 `
 
 type CreateDnsRecordParams struct {
@@ -27,19 +30,30 @@ type CreateDnsRecordParams struct {
 	Name      string
 	Content   sql.NullString
 	TypeID    int64
+	Modified  sql.NullString
+	Created   sql.NullString
 	Ttl       int64
 }
 
-func (q *Queries) CreateDnsRecord(ctx context.Context, arg CreateDnsRecordParams) error {
-	_, err := q.db.ExecContext(ctx, createDnsRecord,
+type CreateDnsRecordRow struct {
+	ID        int64
+	RecordUid string
+}
+
+func (q *Queries) CreateDnsRecord(ctx context.Context, arg CreateDnsRecordParams) (CreateDnsRecordRow, error) {
+	row := q.db.QueryRowContext(ctx, createDnsRecord,
 		arg.RecordUid,
 		arg.ZoneUid,
 		arg.Name,
 		arg.Content,
 		arg.TypeID,
+		arg.Modified,
+		arg.Created,
 		arg.Ttl,
 	)
-	return err
+	var i CreateDnsRecordRow
+	err := row.Scan(&i.ID, &i.RecordUid)
+	return i, err
 }
 
 const createDnsZone = `-- name: CreateDnsZone :exec
@@ -147,7 +161,7 @@ WHERE r.zone_uid = ?
 type GetRecordsByZoneIdRow struct {
 	ID        int64
 	RecordUid string
-	ZoneID    int64
+	ZoneID    sql.NullInt64
 	ZoneUid   string
 	TypeID    int64
 	Ttl       int64

@@ -9,6 +9,12 @@ ifeq ($(VERBOSE),1)
 	V = -v
 endif
 
+sqlc-and-migrations:
+	source config_goose.sh
+	goose down -v
+	goose up -v
+	sqlc generate
+
 build:
 	go build $(V) -o $(BIN_NAME) .
 

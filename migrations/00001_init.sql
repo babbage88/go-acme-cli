@@ -26,7 +26,7 @@ VALUES (1, 'A'),
 CREATE TABLE dns_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     record_uid TEXT UNIQUE NOT NULL,
-    zone_id INTEGER NOT NULL,
+    zone_id INTEGER,
     zone_uid TEXT NOT NULL,
     type_id INTEGER NOT NULL,
     name TEXT NOT NULL,
@@ -34,9 +34,9 @@ CREATE TABLE dns_records (
     ttl INTEGER NOT NULL,
     created TEXT DEFAULT (datetime()),
     modified TEXT DEFAULT (datetime()),
-    FOREIGN KEY (type_id) REFERENCES record_type_mapping (record_type_id),
-    FOREIGN KEY (zone_uid) REFERENCES dns_zones (zone_uid) ON DELETE CASCADE,
-    FOREIGN KEY (zone_id) REFERENCES dns_zones (id) ON DELETE CASCADE
+    FOREIGN KEY (type_id) REFERENCES record_type_mapping (record_type_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (zone_uid) REFERENCES dns_zones (zone_uid) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (zone_id) REFERENCES dns_zones (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 -- +goose StatementEnd
 -- +goose StatementBegin
@@ -45,7 +45,7 @@ CREATE TABLE record_type_mapping (
     record_id INTEGER NOT NULL,
     record_type_id INTEGER NOT NULL,
     FOREIGN KEY (record_type_id) REFERENCES record_types(id),
-    FOREIGN KEY (record_id) REFERENCES dns_records(id) ON DELETE CASCADE 
+    FOREIGN KEY (record_id) REFERENCES dns_records(id) ON UPDATE CASCADE ON DELETE CASCADE 
 );
 -- +goose StatementEnd
 -- +goose StatementBegin
@@ -53,7 +53,7 @@ CREATE TABLE record_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     record_id INTEGER NOT NULL,
     comment TEXT,
-    FOREIGN KEY (record_id) REFERENCES dns_records(id) ON DELETE CASCADE
+    FOREIGN KEY (record_id) REFERENCES dns_records(id) ON UPDATE CASCADE ON DELETE CASCADE 
 );
 -- +goose StatementEnd
 -- +goose StatementBegin

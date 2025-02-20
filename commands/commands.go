@@ -251,10 +251,20 @@ func GetDnsSubCommands() []*cli.Command {
 						params.Tags = cmd.StringSlice("tags")
 					}
 					records, _ := cfcmd.ListDNSRecords(*params)
+					if cmd.Bool("to-db") {
+						cfcmd.InitializeDatabaseConnection()
+						defer cfcmd.DbConn.Close()
+						cfcmd.CreateDnsDbRecords(records)
+					}
 					cfcmd.PrintDnsRecordsTable(records)
 					return cfcmd.Error
 				}
 				records, _ := cfcmd.ListDNSRecords(*params)
+				if cmd.Bool("to-db") {
+					cfcmd.InitializeDatabaseConnection()
+					defer cfcmd.DbConn.Close()
+					cfcmd.CreateDnsDbRecords(records)
+				}
 				if cmd.Bool("print-json") {
 					cfcmd.PrintCommandResultAsJson(records)
 					return cfcmd.Error

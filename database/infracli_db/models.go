@@ -11,7 +11,7 @@ import (
 type DnsRecord struct {
 	ID        int64
 	RecordUid string
-	ZoneID    int64
+	ZoneID    sql.NullInt64
 	ZoneUid   string
 	TypeID    int64
 	Name      string
