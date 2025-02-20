@@ -296,14 +296,6 @@ func (cfcmd *CloudflareCommandUtils) CreateDnsDbRecords(records []cloudflare.DNS
 		if err := queries.CreateRecordComment(context.Background(), commentParams); err != nil {
 			log.Fatalf("Failed to create record comment: %v", err)
 		}
-
-		typeMappingParams := infracli_db.CreateRecordTypeMappingParams{
-			RecordID:     row.ID,
-			RecordTypeID: recTypeId,
-		}
-		if err := queries.CreateRecordTypeMapping(context.Background(), typeMappingParams); err != nil {
-			log.Fatalf("Failed to create record type mapping: %v", err)
-		}
 	}
 }
 

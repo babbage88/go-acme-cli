@@ -99,20 +99,6 @@ func (q *Queries) CreateRecordTag(ctx context.Context, arg CreateRecordTagParams
 	return err
 }
 
-const createRecordTypeMapping = `-- name: CreateRecordTypeMapping :exec
-INSERT OR REPLACE INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?)
-`
-
-type CreateRecordTypeMappingParams struct {
-	RecordID     int64
-	RecordTypeID int64
-}
-
-func (q *Queries) CreateRecordTypeMapping(ctx context.Context, arg CreateRecordTypeMappingParams) error {
-	_, err := q.db.ExecContext(ctx, createRecordTypeMapping, arg.RecordID, arg.RecordTypeID)
-	return err
-}
-
 const deleteRecordByRecordUid = `-- name: DeleteRecordByRecordUid :exec
 DELETE FROM dns_records WHERE record_uid = ?
 `
@@ -145,8 +131,7 @@ func (q *Queries) GetRecordIdByRecordUid(ctx context.Context, recordUid string) 
 const getRecordsByZoneId = `-- name: GetRecordsByZoneId :many
 SELECT 
     r.id,
-    r.record_uid, 
-    r.zone_id,
+    r.record_uid,
     r.zone_uid,
     r.type_id, 
     r.ttl, 
@@ -161,7 +146,6 @@ WHERE r.zone_uid = ?
 type GetRecordsByZoneIdRow struct {
 	ID        int64
 	RecordUid string
-	ZoneID    sql.NullInt64
 	ZoneUid   string
 	TypeID    int64
 	Ttl       int64
@@ -181,7 +165,6 @@ func (q *Queries) GetRecordsByZoneId(ctx context.Context, zoneUid string) ([]Get
 		if err := rows.Scan(
 			&i.ID,
 			&i.RecordUid,
-			&i.ZoneID,
 			&i.ZoneUid,
 			&i.TypeID,
 			&i.Ttl,
@@ -259,7 +242,7 @@ SET name = ?,
     ttl = ?,
     modified = datetime()
 WHERE record_uid = ?
-RETURNING id, record_uid, zone_id, zone_uid, type_id, name, content, ttl, created, modified
+RETURNING id, record_uid, zone_uid, type_id, name, content, ttl, created, modified
 `
 
 type UpdateDnsRecordByRecordUidParams struct {
@@ -282,7 +265,6 @@ func (q *Queries) UpdateDnsRecordByRecordUid(ctx context.Context, arg UpdateDnsR
 	err := row.Scan(
 		&i.ID,
 		&i.RecordUid,
-		&i.ZoneID,
 		&i.ZoneUid,
 		&i.TypeID,
 		&i.Name,
@@ -299,7 +281,7 @@ UPDATE dns_records
 SET content = ?,
     modified = datetime()
 WHERE record_uid = ?
-RETURNING id, record_uid, zone_id, zone_uid, type_id, name, content, ttl, created, modified
+RETURNING id, record_uid, zone_uid, type_id, name, content, ttl, created, modified
 `
 
 type UpdateDnsRecordContentByRecordUidParams struct {
@@ -313,7 +295,6 @@ func (q *Queries) UpdateDnsRecordContentByRecordUid(ctx context.Context, arg Upd
 	err := row.Scan(
 		&i.ID,
 		&i.RecordUid,
-		&i.ZoneID,
 		&i.ZoneUid,
 		&i.TypeID,
 		&i.Name,
@@ -330,7 +311,7 @@ UPDATE dns_records
 SET name = ?,
     modified = datetime()
 WHERE record_uid = ?
-RETURNING id, record_uid, zone_id, zone_uid, type_id, name, content, ttl, created, modified
+RETURNING id, record_uid, zone_uid, type_id, name, content, ttl, created, modified
 `
 
 type UpdateDnsRecordNameByRecordUidParams struct {
@@ -344,7 +325,6 @@ func (q *Queries) UpdateDnsRecordNameByRecordUid(ctx context.Context, arg Update
 	err := row.Scan(
 		&i.ID,
 		&i.RecordUid,
-		&i.ZoneID,
 		&i.ZoneUid,
 		&i.TypeID,
 		&i.Name,
@@ -361,7 +341,7 @@ UPDATE dns_records
 SET ttl = ?,
     modified = datetime()
 WHERE record_uid = ?
-RETURNING id, record_uid, zone_id, zone_uid, type_id, name, content, ttl, created, modified
+RETURNING id, record_uid, zone_uid, type_id, name, content, ttl, created, modified
 `
 
 type UpdateDnsRecordTtlByRecordUidParams struct {
@@ -375,7 +355,6 @@ func (q *Queries) UpdateDnsRecordTtlByRecordUid(ctx context.Context, arg UpdateD
 	err := row.Scan(
 		&i.ID,
 		&i.RecordUid,
-		&i.ZoneID,
 		&i.ZoneUid,
 		&i.TypeID,
 		&i.Name,
@@ -392,7 +371,7 @@ UPDATE dns_records
 SET type_id = ?,
     modified = datetime()
 WHERE record_uid = ?
-RETURNING id, record_uid, zone_id, zone_uid, type_id, name, content, ttl, created, modified
+RETURNING id, record_uid, zone_uid, type_id, name, content, ttl, created, modified
 `
 
 type UpdateDnsRecordTypeIdByRecordUidParams struct {
@@ -406,7 +385,6 @@ func (q *Queries) UpdateDnsRecordTypeIdByRecordUid(ctx context.Context, arg Upda
 	err := row.Scan(
 		&i.ID,
 		&i.RecordUid,
-		&i.ZoneID,
 		&i.ZoneUid,
 		&i.TypeID,
 		&i.Name,

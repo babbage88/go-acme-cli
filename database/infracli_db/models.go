@@ -11,7 +11,6 @@ import (
 type DnsRecord struct {
 	ID        int64
 	RecordUid string
-	ZoneID    sql.NullInt64
 	ZoneUid   string
 	TypeID    int64
 	Name      string
@@ -42,10 +41,4 @@ type RecordTag struct {
 type RecordType struct {
 	ID         int64
 	RecordType string
-}
-
-type RecordTypeMapping struct {
-	ID           int64
-	RecordID     int64
-	RecordTypeID int64
 }

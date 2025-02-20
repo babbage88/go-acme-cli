@@ -14,8 +14,7 @@ SELECT id FROM dns_records WHERE record_uid = ? LIMIT 1;
 -- name: GetRecordsByZoneId :many
 SELECT 
     r.id,
-    r.record_uid, 
-    r.zone_id,
+    r.record_uid,
     r.zone_uid,
     r.type_id, 
     r.ttl, 
@@ -42,10 +41,6 @@ modified = excluded.modified,
 created = excluded.created,
 ttl = excluded.ttl
 RETURNING id, record_uid;
-
-
--- name: CreateRecordTypeMapping :exec
-INSERT OR REPLACE INTO record_type_mapping (record_id, record_type_id) VALUES(?, ?);
 
 -- name: CreateRecordComment :exec
 INSERT OR REPLACE INTO record_comments (record_id, comment) VALUES(?, ?);
