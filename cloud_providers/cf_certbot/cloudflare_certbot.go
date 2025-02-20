@@ -5,12 +5,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"fmt"
 	"log/slog"
 
+	"github.com/babbage88/go-acme-cli/commands"
 	"golang.org/x/crypto/acme"
 )
 
-func AcmeRenew() {
+func AcmeRenew(envfile string, domainName string) {
 
 	// All the usual account registration prelude
 	accountKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -29,7 +31,7 @@ func AcmeRenew() {
 	}
 
 	// Authorize a DNS name
-	authz, err := client.Authorize(context.Background(), "example.org")
+	authz, err := client.Authorize(context.Background(), domainName)
 	if err != nil {
 		slog.Error("can not authorize", slog.String("error", err.Error()))
 	}
@@ -50,7 +52,15 @@ func AcmeRenew() {
 	txtLabel := "_acme-challenge." + authz.Identifier.Value
 	txtValue, _ := client.DNS01ChallengeRecord(chal.Token)
 	slog.Info("Creating record.", slog.String("txtLabel", txtLabel), slog.String("txtValue", txtValue))
-
+	api, err := commands.NewCloudflareAPIClient(envfile)
+	if err != nil {
+		slog.Error("error opening cloudflare api client", slog.String("error", err.Error()))
+	}
+	zoneID, err := api.ZoneIDByName(domainName)
+	if err != nil {
+		slog.Error("error retrieving cloudflare zone id from api client", slog.String("error", err.Error()))
+	}
+	fmt.Println(zoneID)
 	// Then the usual: accept the challenge, wait for the authorization ...
 	if _, err := client.Accept(context.Background(), chal); err != nil {
 		slog.Error("Can't accept challenge", slog.String("error", err.Error()))
