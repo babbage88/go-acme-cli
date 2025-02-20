@@ -107,6 +107,15 @@ func (l *CustomLogger) Info(message string) {
 	l.Output.Write([]byte(msgString))
 }
 
+func (l *CustomLogger) Infof(s string, formatter ...any) {
+	message := fmt.Sprintf(s, formatter...)
+	msgString := l.Prefix("[INFO]") + " - " + message + "\n"
+	if l.PrettyConsole {
+		msgString = PrettyLogInfoString(msgString)
+	}
+	l.Output.Write([]byte(msgString))
+}
+
 func (l *CustomLogger) Warning(message string) {
 	msgString := l.Prefix("[WARN]") + " " + " - " + message + "\n"
 	if l.PrettyConsole {
@@ -116,6 +125,15 @@ func (l *CustomLogger) Warning(message string) {
 }
 
 func (l *CustomLogger) Error(message string) {
+	msgString := l.Prefix("[ERROR]") + " - " + message + "\n"
+	if l.PrettyConsole {
+		msgString = PrettyLogErrorString(msgString)
+	}
+	l.Output.Write([]byte(msgString))
+}
+
+func (l *CustomLogger) Errorf(s string, formatter ...any) {
+	message := fmt.Sprintf(s, formatter...)
 	msgString := l.Prefix("[ERROR]") + " - " + message + "\n"
 	if l.PrettyConsole {
 		msgString = PrettyLogErrorString(msgString)

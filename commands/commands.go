@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/babbage88/go-acme-cli/cloud_providers/cf_certbot"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/urfave/cli/v3"
 )
@@ -17,6 +18,38 @@ func DnsBaseCommand() []*cli.Command {
 			Authors:               cfDnsComandAuthors(),
 			Commands:              GetDnsSubCommands(),
 			Flags:                 cfDnsSubcommandFlags(),
+		},
+		{
+			Name:                  "acme-renew",
+			EnableShellCompletion: true,
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "renew-domain",
+					Value:   "*.trahan.dev",
+					Usage:   "Domain to request certificate for",
+					Sources: cli.EnvVars("LE_RENEW_DOMAIN"),
+				},
+				&cli.StringFlag{
+					Name:    "acme-url",
+					Value:   "https://acme-staging-v02.api.letsencrypt.org/",
+					Usage:   "ACME url where renewal requests are sent.",
+					Sources: cli.EnvVars("LE_ACME_URL"),
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+				if cmd.NArg() == 0 {
+					err = cf_certbot.AcmeRenew(cmd.String("env-file"), cmd.String("renew-domain"), cmd.String("acme-url"))
+					if err != nil {
+						logger.Errorf("error renewing certificate err: %s renew-domain: %s", err.Error(), cmd.String("renew-domain"))
+						return err
+					}
+					return err
+				}
+				err = fmt.Errorf("Please specify either --renew-domian and --acme-url flags, or set LE_RENEW_DOMAIN and LE_ACME_URL in env-file.")
+				return err
+			},
 		},
 	}
 	return cmd
