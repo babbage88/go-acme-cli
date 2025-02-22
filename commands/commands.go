@@ -25,26 +25,54 @@ func DnsBaseCommand() []*cli.Command {
 			Version:               versionNumber,
 			Authors:               cfDnsComandAuthors(),
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    "renew-domain",
-					Value:   "*.trahan.dev",
+				&cli.StringSliceFlag{
+					Name:    "renew-domains",
+					Aliases: []string{"renew-domain"},
+					Value:   []string{"*.trahan.dev"},
 					Usage:   "Domain to request certificate for",
 					Sources: cli.EnvVars("LE_RENEW_DOMAIN"),
 				},
 				&cli.StringFlag{
 					Name:    "acme-url",
-					Value:   "https://acme-staging-v02.api.letsencrypt.org/",
+					Value:   "https://acme-v02.api.letsencrypt.org/directory",
 					Usage:   "ACME url where renewal requests are sent.",
 					Sources: cli.EnvVars("LE_ACME_URL"),
+				},
+				&cli.StringFlag{
+					Name:    "zip-name",
+					Value:   "certs.zip",
+					Usage:   "zip file name where certs will be saved.",
+					Sources: cli.EnvVars("CERT_ZIP_FILE"),
+				},
+				&cli.BoolFlag{
+					Name:  "acme-save-zip",
+					Value: true,
+					Usage: "zip file name where certs will be saved.",
+				},
+				&cli.StringFlag{
+					Name:    "acme-email",
+					Value:   "justin@trahan.dev",
+					Usage:   "Email for Let's Encrypt renewal request.",
+					Sources: cli.EnvVars("LE_EMAIL"),
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					err = cf_certbot.AcmeRenew(cmd.String("env-file"), cmd.String("renew-domain"), cmd.String("acme-url"))
+					fmt.Println(cmd.String("acme-url"))
+					certRequest := &cf_certbot.CertificateRenewalRequest{
+						EnvFile:     cmd.String("env-file"),
+						DomainNames: cmd.StringSlice("renew-domains"),
+						AcmeEmail:   cmd.String("acme-email"),
+						AcmeUrl:     cmd.String("acme-url"),
+						ZipDir:      cmd.String("zip-name"),
+						SaveZip:     cmd.Bool("acme-save-zip"),
+					}
+					_, err := certRequest.CliRenewal()
 					if err != nil {
 						logger.Errorf("error renewing certificate err: %s renew-domain: %s", err.Error(), cmd.String("renew-domain"))
 						return err
 					}
+
 					return err
 				}
 				err = fmt.Errorf("Please specify either --renew-domian and --acme-url flags, or set LE_RENEW_DOMAIN and LE_ACME_URL in env-file.")
