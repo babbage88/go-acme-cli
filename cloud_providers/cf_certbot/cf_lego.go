@@ -11,9 +11,11 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/babbage88/go-acme-cli/internal/pretty"
+	"github.com/babbage88/go-acme-cli/storage/goinfra_minio"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge/dns01"
@@ -40,6 +42,7 @@ type CertificateRenewalRequest struct {
 	AcmeUrl     string   `json:"acmeUrl"`
 	SaveZip     bool     `json:"saveZip"`
 	ZipDir      string   `json:"zipDir"`
+	PushS3      bool     `json:"pushS3"`
 }
 
 type AcmeUser struct {
@@ -141,6 +144,21 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 			slog.Error("error saving zip", slog.String("error", err.Error()))
 		}
 		certdata.ZipDir = c.ZipDir
+	}
+
+	if c.PushS3 {
+		objName := fmt.Sprint(strings.TrimLeft(c.DomainNames[0], "*"), "certs.zip")
+		s3client, initErr := goinfra_minio.NewS3ClientFromEnv(c.EnvFile)
+		if initErr != nil {
+			err = initErr
+			slog.Error("error in pushS3 stiep", slog.String("error", err.Error()))
+		}
+		info, pushErr := s3client.PushFileToDefaultBucket(objName, c.ZipDir)
+		if pushErr != nil {
+			err = pushErr
+			slog.Error("error pushing file to s3", slog.String("error", err.Error()), slog.String("sourceFile", c.ZipDir))
+		}
+		fmt.Printf("S3 Location: %s\n", info.Location)
 	}
 	return *certdata, err
 }

@@ -49,6 +49,12 @@ func DnsBaseCommand() []*cli.Command {
 					Value: true,
 					Usage: "zip file name where certs will be saved.",
 				},
+				&cli.BoolFlag{
+					Name:    "acme-pushs3",
+					Aliases: []string{"push-s3"},
+					Value:   true,
+					Usage:   "push certs zip to s3 bucket.",
+				},
 				&cli.StringFlag{
 					Name:    "acme-email",
 					Value:   "justin@trahan.dev",
@@ -66,6 +72,7 @@ func DnsBaseCommand() []*cli.Command {
 						AcmeUrl:     cmd.String("acme-url"),
 						ZipDir:      cmd.String("zip-name"),
 						SaveZip:     cmd.Bool("acme-save-zip"),
+						PushS3:      cmd.Bool("acme-pushs3"),
 					}
 					_, err := certRequest.CliRenewal()
 					if err != nil {
