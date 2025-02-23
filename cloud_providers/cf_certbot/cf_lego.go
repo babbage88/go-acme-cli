@@ -2,6 +2,7 @@ package cf_certbot
 
 import (
 	"archive/zip"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -33,6 +34,7 @@ type CertificateData struct {
 	FullchainAndKey string   `json:"fullchain_and_key"`
 	PrivKey         string   `json:"priv_key"`
 	ZipDir          string   `json:"zipDir"`
+	S3DownloadUrl   string   `json:"s3DownloadUrl"`
 }
 
 type CertificateRenewalRequest struct {
@@ -153,12 +155,17 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 			err = initErr
 			slog.Error("error in pushS3 stiep", slog.String("error", err.Error()))
 		}
-		info, pushErr := s3client.PushFileToDefaultBucket(objName, c.ZipDir)
+		_, pushErr := s3client.PushFileToDefaultBucket(objName, c.ZipDir)
 		if pushErr != nil {
 			err = pushErr
 			slog.Error("error pushing file to s3", slog.String("error", err.Error()), slog.String("sourceFile", c.ZipDir))
 		}
-		fmt.Printf("S3 Location: %s\n", info.Location)
+		expiry := 15 * time.Minute
+		presignedUrl, err := s3client.Client.PresignedGetObject(context.Background(), s3client.DefaultBucketName, objName, expiry, nil)
+		if err != nil {
+			slog.Error("Error generating presigned download URL", slog.String("error", err.Error()))
+		}
+		certdata.S3DownloadUrl = presignedUrl.String()
 	}
 	return *certdata, err
 }
