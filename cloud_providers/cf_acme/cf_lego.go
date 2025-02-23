@@ -1,4 +1,4 @@
-package cf_certbot
+package cf_acme
 
 import (
 	"archive/zip"

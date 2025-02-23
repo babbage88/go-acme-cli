@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/babbage88/go-acme-cli/cloud_providers/cf_certbot"
+	"github.com/babbage88/go-acme-cli/cloud_providers/cf_acme"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/urfave/cli/v3"
 )
@@ -65,7 +65,7 @@ func DnsBaseCommand() []*cli.Command {
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					fmt.Println(cmd.String("acme-url"))
-					certRequest := &cf_certbot.CertificateRenewalRequest{
+					certRequest := &cf_acme.CertificateRenewalRequest{
 						EnvFile:     cmd.String("env-file"),
 						DomainNames: cmd.StringSlice("renew-domains"),
 						AcmeEmail:   cmd.String("acme-email"),
