@@ -26,6 +26,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type ICertRenewalService interface {
+	RenewCertWithDns() (CertificateData, error)
+}
+
 type CertificateData struct {
 	DomainNames     []string `json:"domainName"`
 	CertPEM         string   `json:"cert_pem"`
@@ -65,18 +69,12 @@ func (u *AcmeUser) GetPrivateKey() crypto.PrivateKey {
 	return u.key
 }
 
-func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) {
-	certdata := &CertificateData{DomainNames: c.DomainNames}
-	err := godotenv.Load(c.EnvFile)
-	if err != nil {
-		slog.Error("Error loading .env file", slog.String("error", err.Error()))
-		return *certdata, err
-	}
+func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recursiveNameServers []string, timeout time.Duration) (*lego.Client, *AcmeUser, error) {
 	// Create a user. New accounts need an email and private key to start.
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		slog.Error("error creating private key", slog.String("error", err.Error()))
-		return *certdata, err
+		return &lego.Client{}, &AcmeUser{}, err
 	}
 
 	acmeUser := AcmeUser{
@@ -94,33 +92,41 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 	client, err := lego.NewClient(config)
 	if err != nil {
 		slog.Error("error creating client", slog.String("error", err.Error()))
-		return *certdata, err
+		return &lego.Client{}, &acmeUser, err
 	}
-
 	provider, err := lego_cloudflare.NewDNSProvider()
-	recursiveServers := dns01.AddRecursiveNameservers(([]string{"1.1.1.1:53", "1.0.0.1:53"}))
-	timeout := dns01.AddDNSTimeout(60 * time.Second)
-	//pt := dns01.DisableAuthoritativeNssPropagationRequirement()
-
 	if err != nil {
-		if err != nil {
-			slog.Error("error initializing cloudflare DNS challenge provider", slog.String("error", err.Error()))
-			return *certdata, err
-		}
+		slog.Error("error initializing cloudflare DNS challenge provider", slog.String("error", err.Error()))
+		return &lego.Client{}, &acmeUser, err
 	}
+	recursiveServersOption := dns01.AddRecursiveNameservers(recursiveNameServers)
+	timeoutOption := dns01.AddDNSTimeout(timeout)
 
-	err = client.Challenge.SetDNS01Provider(provider, recursiveServers, timeout)
+	err = client.Challenge.SetDNS01Provider(provider, recursiveServersOption, timeoutOption)
 	if err != nil {
 		slog.Error("Failed to set DNS challenge.", slog.String("error", err.Error()))
+		return &lego.Client{}, &acmeUser, err
+	}
+	return client, &acmeUser, err
+}
+
+func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) {
+	certdata := &CertificateData{DomainNames: c.DomainNames}
+	token := os.Getenv("LOUDFLARE_DNS_API_TOKEN")
+	nameServers := []string{"1.1.1.1", "1.0.0.1"}
+	timeout := 60 * time.Second
+	client, acmeUser, err := c.InitialzeClientandPovider(token, nameServers, timeout)
+	if err != nil {
+		slog.Error("Error initializing client", slog.String("error", err.Error()))
 		return *certdata, err
 	}
-
 	// New users will need to register
 	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 	if err != nil {
 		slog.Error("Error creating registration", slog.String("error", err.Error()))
 		return *certdata, err
 	}
+
 	acmeUser.Registration = reg
 
 	request := certificate.ObtainRequest{
@@ -171,6 +177,11 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 }
 
 func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
+	err := godotenv.Load(c.EnvFile)
+	if err != nil {
+		slog.Error("Error loading .env file", slog.String("error", err.Error()))
+		return CertificateData{DomainNames: c.DomainNames}, err
+	}
 	certData, err := c.RenewCertWithDns()
 	if err != nil {
 		slog.Error("error renewing certificate", slog.String("error", err.Error()))
