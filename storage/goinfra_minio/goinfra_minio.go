@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -104,20 +103,14 @@ func NewMinioClient(endpoint string, keyID string, accessSecret string, useSSL b
 	return minioClient, err
 }
 
-func NewS3ClientFromEnv(envfile string) (*S3ClientWithBucket, error) {
-	err := godotenv.Load(envfile)
-	if err != nil {
-		slog.Error("Error loading .env file", slog.String("error", err.Error()))
-		return &S3ClientWithBucket{}, err
-	}
+func NewS3ClientFromEnv() (*S3ClientWithBucket, error) {
 	endpoint := os.Getenv("S3_ENDPOINT")
 	keyID := os.Getenv("S3_KEYID")
 	accessSecret := os.Getenv("S3_SECRET")
 	defaultBucket := os.Getenv("S3_DEFAULT_BUCKET")
-	useSSL := getenvBool("S3_USESSL", false)
-	s3client, initErr := NewS3ClientWithBucket(endpoint, keyID, accessSecret, defaultBucket, useSSL)
-	if initErr != nil {
-		err = initErr
+	useSSL := GetenvBool("S3_USESSL", false)
+	s3client, err := NewS3ClientWithBucket(endpoint, keyID, accessSecret, defaultBucket, useSSL)
+	if err != nil {
 		slog.Error("error creating s3 client from env", slog.String("error", err.Error()))
 		return s3client, err
 	}
@@ -126,7 +119,7 @@ func NewS3ClientFromEnv(envfile string) (*S3ClientWithBucket, error) {
 
 }
 
-func getenvBool(name string, defaultVal bool) bool {
+func GetenvBool(name string, defaultVal bool) bool {
 	val := os.Getenv(name)
 	if val == "" {
 		return defaultVal

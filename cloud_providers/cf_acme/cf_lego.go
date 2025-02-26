@@ -1,13 +1,11 @@
 package cf_acme
 
 import (
-	"archive/zip"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -28,33 +26,6 @@ import (
 
 type ICertRenewalService interface {
 	RenewCertWithDns() (CertificateData, error)
-}
-
-type CertificateData struct {
-	DomainNames     []string `json:"domainName"`
-	CertPEM         string   `json:"cert_pem"`
-	ChainPEM        string   `json:"chain_pem"`
-	Fullchain       string   `json:"fullchain_pem"`
-	FullchainAndKey string   `json:"fullchain_and_key"`
-	PrivKey         string   `json:"priv_key"`
-	ZipDir          string   `json:"zipDir"`
-	S3DownloadUrl   string   `json:"s3DownloadUrl"`
-}
-
-type CertificateRenewalRequest struct {
-	EnvFile     string   `json:"envFile"`
-	DomainNames []string `json:"domainName"`
-	AcmeEmail   string   `json:"acmeEmail"`
-	AcmeUrl     string   `json:"acmeUrl"`
-	SaveZip     bool     `json:"saveZip"`
-	ZipDir      string   `json:"zipDir"`
-	PushS3      bool     `json:"pushS3"`
-}
-
-type AcmeUser struct {
-	Email        string
-	Registration *registration.Resource
-	key          crypto.PrivateKey
 }
 
 func (u *AcmeUser) GetEmail() string {
@@ -137,6 +108,7 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	cert := string(certificates.Certificate)
 	privKey := string(certificates.PrivateKey)
 	issuerCA := string(certificates.IssuerCertificate)
@@ -146,17 +118,9 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 	certdata.Fullchain = fullChain
 	certdata.FullchainAndKey = fmt.Sprint(fullChain, privKey)
 
-	if c.SaveZip {
-		err = saveToZip(c.ZipDir, certificates.Certificate, certificates.PrivateKey, certificates.IssuerCertificate)
-		if err != nil {
-			slog.Error("error saving zip", slog.String("error", err.Error()))
-		}
-		certdata.ZipDir = c.ZipDir
-	}
-
 	if c.PushS3 {
 		objName := fmt.Sprint(strings.TrimLeft(c.DomainNames[0], "*"), "certs.zip")
-		s3client, initErr := goinfra_minio.NewS3ClientFromEnv(c.EnvFile)
+		s3client, initErr := goinfra_minio.NewS3ClientFromEnv()
 		if initErr != nil {
 			err = initErr
 			slog.Error("error in pushS3 stiep", slog.String("error", err.Error()))
@@ -182,10 +146,24 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 		slog.Error("Error loading .env file", slog.String("error", err.Error()))
 		return CertificateData{DomainNames: c.DomainNames}, err
 	}
+
 	certData, err := c.RenewCertWithDns()
+
 	if err != nil {
 		slog.Error("error renewing certificate", slog.String("error", err.Error()))
 		return CertificateData{DomainNames: c.DomainNames}, err
+	}
+
+	if c.SaveZip {
+		err := saveToZip(c.ZipDir, []byte(certData.CertPEM), []byte(certData.PrivKey), []byte(certData.Fullchain))
+		if err != nil {
+			slog.Error("error saving zip", slog.String("error", err.Error()))
+			return certData, err
+		}
+	}
+
+	if c.PushS3 {
+		certData.PushZipDirToS3(c.ZipDir)
 	}
 	printJson(certData)
 
@@ -195,41 +173,70 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 	return certData, err
 }
 
-func printJson(data any) {
-	response, err := json.MarshalIndent(data, "", "  ")
+func (c *CertificateRenewalRequest) RenewWithToken(token string, recursiveNameservers []string, timeout time.Duration) (CertificateData, error) {
+	client, acmeUser, err := c.InitialzeClientandPovider(token, recursiveNameservers, timeout)
 	if err != nil {
-		slog.Error("error marshaling response.", slog.String("error", err.Error()))
+		slog.Error("error initializing ACME client", slog.String("error", err.Error()))
+		return CertificateData{}, err
 	}
-	fmt.Printf("%s\n", string(response))
-	fmt.Println()
+
+	// New users will need to register
+	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
+	if err != nil {
+		slog.Error("Error creating registration", slog.String("error", err.Error()))
+		return CertificateData{}, err
+	}
+
+	acmeUser.Registration = reg
+
+	request := certificate.ObtainRequest{
+		Domains: c.DomainNames,
+		Bundle:  true,
+	}
+	certificates, err := client.Certificate.Obtain(request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cert := string(certificates.Certificate)
+	privKey := string(certificates.PrivateKey)
+	issuerCA := string(certificates.IssuerCertificate)
+	fullChain := fmt.Sprint(cert, issuerCA)
+
+	certdata := CertificateData{
+		DomainNames:     c.DomainNames,
+		CertPEM:         cert,
+		PrivKey:         privKey,
+		Fullchain:       fullChain,
+		FullchainAndKey: fmt.Sprint(fullChain, privKey),
+	}
+
+	return certdata, err
 }
 
-func saveToZip(filename string, certPEM []byte, keyPEM []byte, issuerCA []byte) error {
-	file, err := os.Create(filename)
+func (c *CertificateData) SaveToZip(path string) error {
+	err := saveToZip(path, []byte(c.CertPEM), []byte(c.PrivKey), []byte(c.ChainPEM))
 	if err != nil {
+		slog.Error("error saving zip", slog.String("error", err.Error()))
+	}
+	return err
+}
+
+func (c *CertificateData) PushZipDirToS3(objName string) error {
+	s3client, err := goinfra_minio.NewS3ClientFromEnv()
+	if err != nil {
+		slog.Error("error initializing client", slog.String("error", err.Error()))
 		return err
 	}
-	defer file.Close()
-
-	zipWriter := zip.NewWriter(file)
-	defer zipWriter.Close()
-
-	files := map[string][]byte{
-		"certificate.pem": certPEM,
-		"private_key.pem": keyPEM,
-		"issuer_ca.pem":   issuerCA,
+	_, pushErr := s3client.PushFileToDefaultBucket(objName, c.ZipDir)
+	if pushErr != nil {
+		err = pushErr
+		slog.Error("error pushing file to s3", slog.String("error", err.Error()), slog.String("sourceFile", c.ZipDir))
 	}
-
-	for name, content := range files {
-		writer, err := zipWriter.Create(name)
-		if err != nil {
-			return err
-		}
-		_, err = writer.Write(content)
-		if err != nil {
-			return err
-		}
+	expiry := 15 * time.Minute
+	presignedUrl, err := s3client.Client.PresignedGetObject(context.Background(), s3client.DefaultBucketName, objName, expiry, nil)
+	if err != nil {
+		slog.Error("Error generating presigned download URL", slog.String("error", err.Error()))
 	}
-
-	return nil
+	c.S3DownloadUrl = presignedUrl.String()
+	return err
 }
