@@ -112,7 +112,7 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 
 func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) {
 	certdata := &CertificateData{DomainNames: c.DomainNames}
-	token := os.Getenv("LOUDFLARE_DNS_API_TOKEN")
+	token := os.Getenv("CLOUDFLARE_DNS_API_TOKEN")
 	nameServers := []string{"1.1.1.1", "1.0.0.1"}
 	timeout := 60 * time.Second
 	client, acmeUser, err := c.InitialzeClientandPovider(token, nameServers, timeout)
