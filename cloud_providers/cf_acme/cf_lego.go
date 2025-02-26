@@ -24,7 +24,7 @@ import (
 )
 
 type ICertRenewalService interface {
-	RenewCertWithDns() (CertificateData, error)
+	Renew(token string, recurseiveNameservers []string, timeout time.Duration) (CertificateData, error)
 }
 
 func (u *AcmeUser) GetEmail() string {
@@ -154,7 +154,7 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 	return certData, err
 }
 
-func (c *CertificateRenewalRequest) RenewWithToken(token string, recursiveNameservers []string, timeout time.Duration) (CertificateData, error) {
+func (c *CertificateRenewalRequest) Renew(token string, recursiveNameservers []string, timeout time.Duration) (CertificateData, error) {
 	client, acmeUser, err := c.InitialzeClientandPovider(token, recursiveNameservers, timeout)
 	if err != nil {
 		slog.Error("error initializing ACME client", slog.String("error", err.Error()))
