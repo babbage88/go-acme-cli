@@ -10,7 +10,6 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/babbage88/go-acme-cli/internal/pretty"
@@ -117,26 +116,8 @@ func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) 
 	certdata.PrivKey = privKey
 	certdata.Fullchain = fullChain
 	certdata.FullchainAndKey = fmt.Sprint(fullChain, privKey)
+	certdata.ZipDir = c.ZipDir
 
-	if c.PushS3 {
-		objName := fmt.Sprint(strings.TrimLeft(c.DomainNames[0], "*"), "certs.zip")
-		s3client, initErr := goinfra_minio.NewS3ClientFromEnv()
-		if initErr != nil {
-			err = initErr
-			slog.Error("error in pushS3 stiep", slog.String("error", err.Error()))
-		}
-		_, pushErr := s3client.PushFileToDefaultBucket(objName, c.ZipDir)
-		if pushErr != nil {
-			err = pushErr
-			slog.Error("error pushing file to s3", slog.String("error", err.Error()), slog.String("sourceFile", c.ZipDir))
-		}
-		expiry := 15 * time.Minute
-		presignedUrl, err := s3client.Client.PresignedGetObject(context.Background(), s3client.DefaultBucketName, objName, expiry, nil)
-		if err != nil {
-			slog.Error("Error generating presigned download URL", slog.String("error", err.Error()))
-		}
-		certdata.S3DownloadUrl = presignedUrl.String()
-	}
 	return *certdata, err
 }
 
