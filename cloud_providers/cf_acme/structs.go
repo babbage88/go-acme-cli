@@ -2,6 +2,7 @@ package cf_acme
 
 import (
 	"crypto"
+	"time"
 
 	"github.com/go-acme/lego/v4/registration"
 )
@@ -18,14 +19,17 @@ type CertificateData struct {
 }
 
 type CertificateRenewalRequest struct {
-	EnvFile     string   `json:"envFile"`
-	DomainNames []string `json:"domainName"`
-	AcmeEmail   string   `json:"acmeEmail"`
-	AcmeUrl     string   `json:"acmeUrl"`
-	SaveZip     bool     `json:"saveZip"`
-	ZipDir      string   `json:"zipDir"`
-	PushS3      bool     `json:"pushS3"`
-	TTL         int      `json:"ttl"`
+	EnvFile              string        `json:"envFile"`
+	DomainNames          []string      `json:"domainName"`
+	AcmeEmail            string        `json:"acmeEmail"`
+	AcmeUrl              string        `json:"acmeUrl"`
+	SaveZip              bool          `json:"saveZip"`
+	ZipDir               string        `json:"zipDir"`
+	PushS3               bool          `json:"pushS3"`
+	TTL                  int           `json:"ttl"`
+	Token                string        `json:"token"`
+	RecursiveNameServers []string      `json:"recurseServers"`
+	Timeout              time.Duration `json:"timeout"`
 }
 
 type AcmeUser struct {
