@@ -65,7 +65,9 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 		return &lego.Client{}, &acmeUser, err
 	}
 	provider, err := lego_cloudflare.NewDNSProviderConfig(&lego_cloudflare.Config{
-		AuthToken: token,
+		AuthToken:          token,
+		TTL:                int(60),
+		PropagationTimeout: timeout,
 	})
 	if err != nil {
 		slog.Error("error initializing cloudflare DNS challenge provider", slog.String("error", err.Error()))
