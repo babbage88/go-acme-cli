@@ -25,6 +25,7 @@ type CertificateRenewalRequest struct {
 	SaveZip     bool     `json:"saveZip"`
 	ZipDir      string   `json:"zipDir"`
 	PushS3      bool     `json:"pushS3"`
+	TTL         int      `json:"ttl"`
 }
 
 type AcmeUser struct {
