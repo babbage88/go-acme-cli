@@ -66,7 +66,7 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 	}
 	provider, err := lego_cloudflare.NewDNSProviderConfig(&lego_cloudflare.Config{
 		AuthToken:          token,
-		TTL:                int(300),
+		TTL:                int(120),
 		PropagationTimeout: timeout,
 	})
 
