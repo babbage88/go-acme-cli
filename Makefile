@@ -33,6 +33,7 @@ fetch-tags:
 	@git fetch --tags
 release: fetch-tags
 	$(eval LATEST_TAG := $(shell git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1))
+	@echo $(LATEST_TAG)
 	@branch=$$(git rev-parse --abbrev-ref HEAD); \
 	if [ "$$branch" != "master" ]; then \
 	  echo "Error: You must be on the master branch. Current branch is '$$branch'."; \
