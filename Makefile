@@ -29,8 +29,10 @@ install: build
 # Add this target to the end of your Makefile
 
 # Usage: make release [VERSION=major|minor|patch]
-release:
-	# 1. Ensure we're on the master branch
+fetch-tags:
+	@git fetch --tags
+	LATEST_TAG:=$(shell git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1)
+release: fetch-tags
 	@branch=$$(git rev-parse --abbrev-ref HEAD); \
 	if [ "$$branch" != "master" ]; then \
 	  echo "Error: You must be on the master branch. Current branch is '$$branch'."; \
@@ -50,20 +52,17 @@ release:
 	fi; \
 	echo "Local master is up-to-date with remote."; \
 	\
-	# 2. Fetch all tags from remote
 	git fetch --tags; \
 	\
 	# 3. Find the latest semver tag (vMAJOR.MINOR.PATCH)
-	latest=$$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1); \
-	export latest \
-	if [ -z "$$latest" ]; then \
+	if [ -z "$(LATEST_TAG) ]; then \
 	  echo "No semver tags found. Starting with v0.0.0"; \
 	  latest="v0.0.0"; \
 	fi; \
 	echo "Latest tag: $$latest"; \
 	\
 	# 4. Increment the chosen version type (default to patch)
-	new_tag=$$(go run . utils version-bumper --latest-version $$latest --increment-type=$(VERSION_TYPE)); \
+	new_tag=$$(go run . utils version-bumper --latest-version $(LATEST_TAG)--increment-type=$(VERSION_TYPE)); \
 	echo "Creating new tag: $$new_tag"; \
 	\
 	# 5. Create the new tag
