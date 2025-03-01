@@ -55,6 +55,7 @@ release:
 	\
 	# 3. Find the latest semver tag (vMAJOR.MINOR.PATCH)
 	latest=$$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1); \
+	export latest \
 	if [ -z "$$latest" ]; then \
 	  echo "No semver tags found. Starting with v0.0.0"; \
 	  latest="v0.0.0"; \
