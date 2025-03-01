@@ -1,5 +1,6 @@
 DOCKER_HUB:=ghcr.io/babbage88/goinfacli:
 BIN_NAME:=goinfracli
+MAIN_BRANCH:=master
 VERSION_TYPE:=patch
 INSTALL_PATH:=$${GOPATH}/bin
 ENV_FILE:=.env
@@ -31,6 +32,20 @@ install: build
 
 # Usage: make release [VERSION=major|minor|patch]
 fetch-tags:
+    @branch=$$(git rev-parse --abbrev-ref HEAD); \
+    if [ "$$branch" != "$(MAIN_BRANCH)" ]; then \
+      echo "Error: You must be on the $(MAIN_BRANCH) branch. Current branch is '$$branch'."; \
+      exit 1; \
+    fi; \
+    git fetch origin $(MAIN_BRANCH); \
+    UPSTREAM=origin/$(MAIN_BRANCH); \
+    LOCAL=$$(git rev-parse @); \
+    REMOTE=$$(git rev-parse "$$UPSTREAM"); \
+    BASE=$$(git merge-base @ "$$UPSTREAM"); \
+    if [ "$$LOCAL" != "$$REMOTE" ]; then \
+      echo "Error: Your local $(MAIN_BRANCH) branch is not up-to-date with remote. Please pull the latest changes."; \
+      exit 1; \
+    fi;
 	@git fetch --tags
 release: fetch-tags
 	@/bin/echo "Latest tag: $(LATEST_TAG)"
