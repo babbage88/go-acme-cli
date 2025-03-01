@@ -66,18 +66,7 @@ release:
 	echo "Current version: $$major.$$minor.$$patch"; \
 	\
 	# 4. Increment the chosen version type (default to patch)
-	case "$(VERSION)" in \
-	  major) \
-	    new_major=$$((major+1)); new_minor=0; new_patch=0; \
-	    ;; \
-	  minor) \
-	    new_major=$$major; new_minor=$$((minor+1)); new_patch=0; \
-	    ;; \
-	  patch|*) \
-	    new_major=$$major; new_minor=$$minor; new_patch=$$((patch+1)); \
-	    ;; \
-	esac; \
-	new_tag="v$$new_major.$$new_minor.$$new_patch"; \
+	new_tag=$$(go run . version-bumper --latest-version=$$latest --increment-type=$(VERSION)); \
 	echo "Creating new tag: $$new_tag"; \
 	\
 	# 5. Create the new tag
