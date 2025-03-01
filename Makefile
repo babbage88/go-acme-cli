@@ -66,7 +66,7 @@ release:
 	echo "Current version: $$major.$$minor.$$patch"; \
 	\
 	# 4. Increment the chosen version type (default to patch)
-	new_tag=$$(go run . version-bumper --latest-version=$$latest --increment-type=$(VERSION)); \
+	new_tag=$$(go run . utils version-bumper --latest-version v1.0.13 --increment-type=$(VERSION)); \
 	echo "Creating new tag: $$new_tag"; \
 	\
 	# 5. Create the new tag
