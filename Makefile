@@ -50,16 +50,8 @@ release: fetch-tags
 	  echo "Error: Your local master branch is not up-to-date with remote. Please pull the latest changes."; \
 	  exit 1; \
 	fi; \
-	echo "Local master is up-to-date with remote."; \
-	\
-	git fetch --tags; \
-	\
-	# 3. Find the latest semver tag (vMAJOR.MINOR.PATCH)
-	if [ -z "$(LATEST_TAG) ]; then \
-	  echo "No semver tags found. Starting with v0.0.0"; \
-	  latest="v0.0.0"; \
-	fi; \
-	echo "Latest tag: $(LATEST_TAG)"; \
+	@echo "Local master is up-to-date with remote."; \
+	@echo "Latest tag: $(LATEST_TAG)"; \
 	\
 	# 4. Increment the chosen version type (default to patch)
 	new_tag=$$(go run . utils version-bumper --latest-version $(LATEST_TAG)--increment-type=$(VERSION_TYPE)); \
@@ -71,8 +63,6 @@ release: fetch-tags
 	# 6. Push the tag to remote
 	#git push origin $$new_tag; \
 	echo "Tag $$new_tag pushed to remote."
-
-
 check-builder:
 	@if ! docker buildx inspect goinfaclibuilder > /dev/null 2>&1; then \
 		echo "Builder goinfaclibuilder does not exist. Creating..."; \
