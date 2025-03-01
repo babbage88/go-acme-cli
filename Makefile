@@ -33,7 +33,7 @@ install: build
 # Usage: make release [VERSION=major|minor|patch]
 fetch-tags:
 	@{ \
-    	@branch=$$(git rev-parse --abbrev-ref HEAD); \
+    	branch=$$(git rev-parse --abbrev-ref HEAD); \
     	if [ "$$branch" != "$(MAIN_BRANCH)" ]; then \
     	  echo "Error: You must be on the $(MAIN_BRANCH) branch. Current branch is '$$branch'."; \
     	  exit 1; \
@@ -47,14 +47,14 @@ fetch-tags:
     	  echo "Error: Your local $(MAIN_BRANCH) branch is not up-to-date with remote. Please pull the latest changes."; \
     	  exit 1; \
     	fi; \
-		git fetch --tags \
+		git fetch --tags; \
 	}
 release: fetch-tags
 	@{ \
-		@/bin/echo "Latest tag: $(LATEST_TAG)"
+		echo "Latest tag: $(LATEST_TAG)"
 		new_tag=$$(go run . utils version-bumper --latest-version "$(LATEST_TAG)" --increment-type=$(VERSION_TYPE)) && \
 		echo "Creating new tag: $$new_tag" && \
-		git tag -a $$new_tag -m $$new_tag && \
+		git tag -a $$new_tag -m $$new_tag; \
 	}
 
 check-builder:
