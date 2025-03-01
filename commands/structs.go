@@ -137,7 +137,6 @@ func (cfcmd *CloudflareCommandUtils) InitializeDatabaseConnection() {
 	if cfcmd.Error != nil {
 		log.Fatalf("Failed to open database: %v", cfcmd.Error.Error())
 	}
-	logger.Info(fmt.Sprintf("%s", cfcmd.DbConn))
 }
 
 func (cfcmd *CloudflareCommandUtils) GetZonesFromDb() []infracli_db.DnsZone {
@@ -272,8 +271,4 @@ var recordTypeMap = map[string]int64{
 	"CNAME": 4,
 	"NS":    5,
 	"TXT":   6,
-}
-
-func getDnsRecordDbType(recordType string) int64 {
-	return recordTypeMap[recordType]
 }

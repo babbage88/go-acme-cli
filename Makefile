@@ -60,15 +60,12 @@ release:
 	fi; \
 	echo "Latest tag: $$latest"; \
 	\
-	# Extract version numbers from the latest tag using portable basic regex
-	major=$$(echo $$latest | sed 's/^v\([0-9][0-9]*\)\..*$$/\1/');
-	minor=$$(echo $$latest | sed 's/^v[0-9][0-9]*\.\([0-9][0-9]*\)\..*$$/\1/');
-	patch=$$(echo $$latest | sed 's/^v[0-9][0-9]*\.[0-9][0-9]*\.\([0-9][0-9]*\)$$/\1/');
-
+	# Use bash to remove the leading "v" and split the version string by "."
+	version=$${latest#v}; \
+	IFS='.' read -r major minor patch <<< "$$version"; \
 	echo "Current version: $$major.$$minor.$$patch"; \
 	\
-	# 4. Increment the chosen version type (default is patch)
-	# VERSION variable can be passed in; default to "patch" if not set.
+	# 4. Increment the chosen version type (default to patch)
 	case "$(VERSION)" in \
 	  major) \
 	    new_major=$$((major+1)); new_minor=0; new_patch=0; \
@@ -88,7 +85,7 @@ release:
 	\
 	# 6. Push the tag to remote
 	#git push origin $$new_tag; \
-	#echo "Tag $$new_tag pushed to remote."
+	echo "Tag $$new_tag pushed to remote."
 
 
 check-builder:

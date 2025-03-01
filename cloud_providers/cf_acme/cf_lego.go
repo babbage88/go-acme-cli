@@ -66,6 +66,7 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 	}
 	provider, err := lego_cloudflare.NewDNSProviderConfig(&lego_cloudflare.Config{
 		AuthToken:          token,
+		ZoneToken:          token,
 		TTL:                int(120),
 		PropagationTimeout: timeout,
 	})
@@ -76,7 +77,6 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 	}
 	recursiveServersOption := dns01.AddRecursiveNameservers(recursiveNameServers)
 	timeoutOption := dns01.AddDNSTimeout(timeout)
-
 	err = client.Challenge.SetDNS01Provider(provider, recursiveServersOption, timeoutOption)
 	if err != nil {
 		slog.Error("Failed to set DNS challenge.", slog.String("error", err.Error()))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/babbage88/go-acme-cli/cloud_providers/cf_acme"
+	"github.com/babbage88/go-acme-cli/internal/bumper"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/urfave/cli/v3"
 )
@@ -82,8 +83,39 @@ func DnsBaseCommand() []*cli.Command {
 
 					return err
 				}
-				err = fmt.Errorf("Please specify either --renew-domian and --acme-url flags, or set LE_RENEW_DOMAIN and LE_ACME_URL in env-file.")
+				err = fmt.Errorf("please specify either --renew-domian and --acme-url flags, or set LE_RENEW_DOMAIN and LE_ACME_URL in env-file")
 				return err
+			},
+		},
+		{
+			Name:                  "utils",
+			EnableShellCompletion: true,
+			Version:               versionNumber,
+			Authors:               cfDnsComandAuthors(),
+			Commands: []*cli.Command{
+				{
+					Name:                  "version-bumper",
+					EnableShellCompletion: true,
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "latest-version",
+							Aliases: []string{"latest-tag"},
+							Usage:   "The version number tag to increment",
+						},
+						&cli.StringFlag{
+							Name:  "increment-type",
+							Value: "patch",
+							Usage: "Which version number to bump, eg: major, minor, patch",
+						},
+					},
+					Action: func(ctx context.Context, cmd *cli.Command) (err error) {
+						if cmd.NArg() == 0 {
+							_, err := bumper.BumpVersion(cmd.String("latest-version"), cmd.String("increment-type"))
+							return err
+						}
+						return fmt.Errorf("must specify latest-version command flag")
+					},
+				},
 			},
 		},
 	}
@@ -94,7 +126,6 @@ func CoreInfraCommand() *cli.Command {
 	cmd := &cli.Command{
 		Name:                  "goinfra",
 		EnableShellCompletion: true,
-		Version:               "v1.0.0",
 		Authors:               cfDnsComandAuthors(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
