@@ -47,7 +47,7 @@ fetch-tags:
     	  echo "Error: Your local $(MAIN_BRANCH) branch is not up-to-date with remote. Please pull the latest changes."; \
     	  exit 1; \
     	fi; \
-		git fetch --tags; \
+		git fetch --tags \
 	}
 release: fetch-tags
 	@{ \
