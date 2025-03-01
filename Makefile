@@ -45,7 +45,7 @@ fetch-tags:
     if [ "$$LOCAL" != "$$REMOTE" ]; then \
       echo "Error: Your local $(MAIN_BRANCH) branch is not up-to-date with remote. Please pull the latest changes."; \
       exit 1; \
-    fi;
+    fi; \
 	git fetch --tags
 release: fetch-tags
 	@/bin/echo "Latest tag: $(LATEST_TAG)"
