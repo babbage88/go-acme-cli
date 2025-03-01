@@ -55,7 +55,7 @@ release: fetch-tags
 	  echo "Latest tag: $(LATEST_TAG)"; \
 	  new_tag=$$(go run . utils version-bumper --latest-version "$(LATEST_TAG)" --increment-type=$(VERSION_TYPE)); \
 	  echo "Creating new tag: $$new_tag"; \
-	  git tag -a $$new_tag -m $$new_tag; \
+	  git tag -a $$new_tag -m $$new_tag && git push --tags; \
 	}
 
 
