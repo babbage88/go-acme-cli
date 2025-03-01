@@ -46,7 +46,7 @@ fetch-tags:
       echo "Error: Your local $(MAIN_BRANCH) branch is not up-to-date with remote. Please pull the latest changes."; \
       exit 1; \
     fi;
-	@git fetch --tags
+	git fetch --tags
 release: fetch-tags
 	@/bin/echo "Latest tag: $(LATEST_TAG)"
 	new_tag=$$(go run . utils version-bumper --latest-version "$(LATEST_TAG)" --increment-type=$(VERSION_TYPE)) && \
