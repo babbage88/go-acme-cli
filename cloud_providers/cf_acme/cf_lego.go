@@ -40,6 +40,7 @@ func (u *AcmeUser) GetPrivateKey() crypto.PrivateKey {
 }
 
 func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recursiveNameServers []string, timeout time.Duration) (*lego.Client, *AcmeUser, error) {
+	fmt.Printf("DEBUG: token val inside cf_acme.InitializeClientandProvider: %s", token)
 	// Create a user. New accounts need an email and private key to start.
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
