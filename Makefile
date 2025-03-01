@@ -37,7 +37,7 @@ release: fetch-tags
 	new_tag=$$(go run . utils version-bumper --latest-version "$(LATEST_TAG)" --increment-type=$(VERSION_TYPE))
 
 	@/bin/echo "Creating new tag: $$new_tag"
-	@$(shell git tag -a $$new_tag -m "$$new_tag")
+	@git tag -a $$new_tag -m "$$new_tag"
 check-builder:
 	@if ! docker buildx inspect goinfaclibuilder > /dev/null 2>&1; then \
 		echo "Builder goinfaclibuilder does not exist. Creating..."; \
