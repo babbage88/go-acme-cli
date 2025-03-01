@@ -1,5 +1,6 @@
 DOCKER_HUB:=ghcr.io/babbage88/goinfacli:
 BIN_NAME:=goinfracli
+VERSION_TYPE:=patch
 INSTALL_PATH:=$${GOPATH}/bin
 ENV_FILE:=.env
 MIG:=$(shell date '+%m%d%Y.%H%M%S')
@@ -60,13 +61,8 @@ release:
 	fi; \
 	echo "Latest tag: $$latest"; \
 	\
-	# Use bash to remove the leading "v" and split the version string by "."
-	version=$${latest#v}; \
-	IFS='.' read -r major minor patch <<< "$$version"; \
-	echo "Current version: $$major.$$minor.$$patch"; \
-	\
 	# 4. Increment the chosen version type (default to patch)
-	new_tag=$$(go run . utils version-bumper --latest-version $$latest --increment-type=$(VERSION)); \
+	new_tag=$$(go run . utils version-bumper --latest-version $$latest --increment-type=$(VERSION_TYPE)); \
 	echo "Creating new tag: $$new_tag"; \
 	\
 	# 5. Create the new tag
