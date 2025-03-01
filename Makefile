@@ -33,7 +33,7 @@ fetch-tags:
 	@git fetch --tags
 release: fetch-tags
 	$(eval LATEST_TAG := $(shell git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1))
-	@branch=$$(git rev-parse --abbrev-ref HEAD); \
+	@branch=$$(git rev-parse --abbrev-ref HEAD) \
 	if [ "$$branch" != "master" ]; then \
 	  echo "Error: You must be on the master branch. Current branch is '$$branch'."; \
 	  exit 1; \
@@ -50,8 +50,8 @@ release: fetch-tags
 	  echo "Error: Your local master branch is not up-to-date with remote. Please pull the latest changes."; \
 	  exit 1; \
 	fi; \
-	@echo "Local master is up-to-date with remote."; \
-	@echo "Latest tag: $(LATEST_TAG)"; \
+	echo "Local master is up-to-date with remote."; \
+	echo "Latest tag: $(LATEST_TAG)"; \
 	\
 	# 4. Increment the chosen version type (default to patch)
 	new_tag=$$(go run . utils version-bumper --latest-version $(LATEST_TAG)--increment-type=$(VERSION_TYPE)); \
