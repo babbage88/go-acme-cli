@@ -33,36 +33,22 @@ fetch-tags:
 	@git fetch --tags
 release: fetch-tags
 	$(eval LATEST_TAG := $(shell git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1))
-	@branch=$$(git rev-parse --abbrev-ref HEAD); \
-	if [ "$$branch" != "master" ]; then \
-	  echo "Error: You must be on the master branch. Current branch is '$$branch'."; \
-	  exit 1; \
-	fi;
-	echo "On master branch: $$branch"; \
-	\
+	@branch=$$(git rev-parse --abbrev-ref HEAD)
+	if [ "$$branch" != "master" ]; then echo "Error: You must be on the master branch. Current branch is '$$branch'.";  exit 1; fi;
+	echo "On master branch: $$branch"
 	# Ensure local master is up-to-date with the remote
-	git fetch origin master; \
-	UPSTREAM=origin/master; \
-	LOCAL=$$(git rev-parse @); \
-	REMOTE=$$(git rev-parse "$$UPSTREAM"); \
-	BASE=$$(git merge-base @ "$$UPSTREAM"); \
-	if [ "$$LOCAL" != "$$REMOTE" ]; then \
-	  echo "Error: Your local master branch is not up-to-date with remote. Please pull the latest changes."; \
-	  exit 1; \
-	fi; \
-	echo "Local master is up-to-date with remote."; \
-	echo "Latest tag: $(LATEST_TAG)"; \
-	\
-	# 4. Increment the chosen version type (default to patch)
+	git fetch origin master
+	UPSTREAM=origin/master
+	LOCAL=$$(git rev-parse @)
+	REMOTE=$$(git rev-parse "$$UPSTREAM")
+	BASE=$$(git merge-base @ "$$UPSTREAM")
+	if [ "$$LOCAL" != "$$REMOTE" ]; then echo "Error: Your local master branch is not up-to-date with remote. Please pull the latest changes."
+	  exit 1; 
+	fi; 
+	echo "Local master is up-to-date with remote."
+	echo "Latest tag: $(LATEST_TAG)"
 	new_tag=$$(go run . utils version-bumper --latest-version $(LATEST_TAG)--increment-type=$(VERSION_TYPE)); \
-	echo "Creating new tag: $$new_tag"; \
-	\
-	# 5. Create the new tag
-	#git tag $$new_tag; \
-	\
-	# 6. Push the tag to remote
-	#git push origin $$new_tag; \
-	echo "Tag $$new_tag pushed to remote."
+	echo "Creating new tag: $$new_tag"
 check-builder:
 	@if ! docker buildx inspect goinfaclibuilder > /dev/null 2>&1; then \
 		echo "Builder goinfaclibuilder does not exist. Creating..."; \
