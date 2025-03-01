@@ -33,7 +33,6 @@ fetch-tags:
 	@git fetch --tags
 release: fetch-tags
 	$(eval LATEST_TAG := $(shell git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1))
-	@echo $(LATEST_TAG)
 	@branch=$$(git rev-parse --abbrev-ref HEAD); \
 	if [ "$$branch" != "master" ]; then \
 	  echo "Error: You must be on the master branch. Current branch is '$$branch'."; \
@@ -60,7 +59,7 @@ release: fetch-tags
 	  echo "No semver tags found. Starting with v0.0.0"; \
 	  latest="v0.0.0"; \
 	fi; \
-	echo "Latest tag: $$latest"; \
+	echo "Latest tag: $(LATEST_TAG)"; \
 	\
 	# 4. Increment the chosen version type (default to patch)
 	new_tag=$$(go run . utils version-bumper --latest-version $(LATEST_TAG)--increment-type=$(VERSION_TYPE)); \
