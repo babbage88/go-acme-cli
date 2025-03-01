@@ -160,6 +160,7 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 }
 
 func (c *CertificateRenewalRequest) Renew(token string, recursiveNameservers []string, timeout time.Duration) (CertificateData, error) {
+	fmt.Printf("cf_lego Renew() token:%s", token)
 	client, acmeUser, err := c.InitialzeClientandPovider(token, recursiveNameservers, timeout)
 	if err != nil {
 		slog.Error("error initializing ACME client", slog.String("error", err.Error()))
