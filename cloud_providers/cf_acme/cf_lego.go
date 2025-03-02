@@ -23,8 +23,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type ICertRenewalService interface {
-	Renew(token string, recurseiveNameservers []string, timeout time.Duration) (CertificateData, error)
+type InfraDnsChallengeSolver interface {
 }
 
 func (u *AcmeUser) GetEmail() string {
@@ -40,7 +39,6 @@ func (u *AcmeUser) GetPrivateKey() crypto.PrivateKey {
 }
 
 func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recursiveNameServers []string, timeout time.Duration) (*lego.Client, *AcmeUser, error) {
-	fmt.Printf("DEBUG: token val inside cf_acme.InitializeClientandProvider: %s", token)
 	// Create a user. New accounts need an email and private key to start.
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -161,7 +159,6 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 }
 
 func (c *CertificateRenewalRequest) Renew(token string, recursiveNameservers []string, timeout time.Duration) (CertificateData, error) {
-	fmt.Printf("cf_lego Renew() token:%s", token)
 	client, acmeUser, err := c.InitialzeClientandPovider(token, recursiveNameservers, timeout)
 	if err != nil {
 		slog.Error("error initializing ACME client", slog.String("error", err.Error()))
