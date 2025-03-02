@@ -19,10 +19,13 @@ type InfraCfCustomDNSProvider struct {
 	RecursiveNameServers []string `json:"recursiveNameServers"`
 	NewTxtRecordId       string   `json:"newTxtRecordId"`
 	CreatedChallengeTXT  bool     `json:"txtCreated"`
+	TTL                  int      `json:"ttl"`
+	//PropagationTimeout   time.Duration `json:"propagationTimout"`
 }
 
 func NewInfraCfCustomDNSProvider(dnsApiToken string, zoneApiToken string, recursiveNameServers []string) (*InfraCfCustomDNSProvider, error) {
-	return &InfraCfCustomDNSProvider{DnsToken: dnsApiToken, ZoneToken: zoneApiToken, RecursiveNameServers: recursiveNameServers}, nil
+	ttl := int(120)
+	return &InfraCfCustomDNSProvider{DnsToken: dnsApiToken, ZoneToken: zoneApiToken, RecursiveNameServers: recursiveNameServers, TTL: ttl}, nil
 }
 
 func (d *InfraCfCustomDNSProvider) Present(domain, token, keyAuth string) error {
@@ -43,7 +46,7 @@ func (d *InfraCfCustomDNSProvider) Present(domain, token, keyAuth string) error 
 	case true:
 		return fmt.Errorf("txt record already exists, please remove it")
 	default:
-		params := cloudflare.CreateDNSRecordParams{Name: info.FQDN, Content: info.Value}
+		params := cloudflare.CreateDNSRecordParams{Name: info.FQDN, Content: info.Value, TTL: d.TTL}
 		record, err := CreateCloudflareDnsRecord(token, zoneId, params)
 		if err != nil {
 			slog.Error("error creating dns record", slog.String("error", err.Error()), slog.String("infofqdn", info.FQDN))

@@ -18,7 +18,6 @@ import (
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/lego"
-	lego_cloudflare "github.com/go-acme/lego/v4/providers/dns/cloudflare"
 	"github.com/go-acme/lego/v4/registration"
 	"github.com/joho/godotenv"
 )
@@ -63,12 +62,15 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 		slog.Error("error creating client", slog.String("error", err.Error()))
 		return &lego.Client{}, &acmeUser, err
 	}
-	provider, err := lego_cloudflare.NewDNSProviderConfig(&lego_cloudflare.Config{
-		AuthToken:          token,
-		ZoneToken:          token,
-		TTL:                int(120),
-		PropagationTimeout: timeout,
-	})
+	/*
+		provider, err := lego_cloudflare.NewDNSProviderConfig(&lego_cloudflare.Config{
+			AuthToken:          token,
+			ZoneToken:          token,
+			TTL:                int(120),
+			PropagationTimeout: timeout,
+		})
+	*/
+	provider, err := NewInfraCfCustomDNSProvider(token, token, recursiveNameServers)
 
 	if err != nil {
 		slog.Error("error initializing cloudflare DNS challenge provider", slog.String("error", err.Error()))
