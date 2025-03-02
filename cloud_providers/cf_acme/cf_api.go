@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
 )
@@ -23,7 +22,7 @@ func GetCloudflareZoneIdFromDomainName(token string, domainName string) (string,
 		return "", err
 	}
 
-	zoneID, err := api.ZoneIDByName(domainName)
+	zoneID, err := api.ZoneIDByName(getRootDomain(domainName))
 	if err != nil {
 		msg := fmt.Sprintf("Error retrieving ZoneId for Domain: %s error: %s", domainName, err.Error())
 		slog.Error(msg)
@@ -33,19 +32,14 @@ func GetCloudflareZoneIdFromDomainName(token string, domainName string) (string,
 	return zoneID, err
 }
 
-func CheckRecordNameExists(token string, domainName string) (RecordQueryResult, error) {
+func CheckRecordNameExists(token string, zoneId string, domainName string) (RecordQueryResult, error) {
 	api, err := cloudflare.NewWithAPIToken(token)
 	if err != nil {
 		slog.Error("Error initializing cf api client. Verify token.")
 		return RecordQueryResult{}, err
 	}
-	zoneID, err := api.ZoneIDByName(domainName)
-	if err != nil {
-		slog.Debug("Error retrieving ZoneId for domain name", slog.String("DomainName", domainName))
-		return RecordQueryResult{}, err
-	}
 
-	records, _, err := api.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(zoneID), cloudflare.ListDNSRecordsParams{Type: "TXT", Name: domainName})
+	records, _, err := api.ListDNSRecords(context.Background(), cloudflare.ZoneIdentifier(zoneId), cloudflare.ListDNSRecordsParams{Type: "TXT", Name: domainName})
 	if err != nil {
 		return RecordQueryResult{}, err
 	}
@@ -99,22 +93,4 @@ func DeleteCloudFlareDnsRecord(token string, zoneId string, recordId string) err
 	slog.Info("Deleting Cloudflare DNS Record", slog.String("ZoneID", zoneId), slog.String("RecordID", recordId))
 	err = api.DeleteDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneId), recordId)
 	return err
-}
-
-// getRootDomain extracts the root domain from a given domain string
-func getRootDomain(domain string) string {
-	// Remove wildcard prefix if present
-	domain = strings.TrimPrefix(domain, "*.")
-
-	// Split the domain into parts
-	parts := strings.Split(domain, ".")
-
-	// Ensure we have at least a domain and a TLD
-	if len(parts) < 2 {
-		return domain
-	}
-
-	rootDomain := strings.Join(parts[len(parts)-2:], ".")
-
-	return rootDomain
 }

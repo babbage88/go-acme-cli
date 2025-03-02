@@ -3,6 +3,7 @@ package cf_acme
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -20,23 +21,38 @@ type InfraCfCustomDNSProvider struct {
 	NewTxtRecordId       string   `json:"newTxtRecordId"`
 	CreatedChallengeTXT  bool     `json:"txtCreated"`
 	TTL                  int      `json:"ttl"`
+	ZoneID               string   `json:"zoneID"`
 	//PropagationTimeout   time.Duration `json:"propagationTimout"`
 }
 
 func NewInfraCfCustomDNSProvider(dnsApiToken string, zoneApiToken string, recursiveNameServers []string) (*InfraCfCustomDNSProvider, error) {
 	ttl := int(120)
+
 	return &InfraCfCustomDNSProvider{DnsToken: dnsApiToken, ZoneToken: zoneApiToken, RecursiveNameServers: recursiveNameServers, TTL: ttl}, nil
 }
 
-func (d *InfraCfCustomDNSProvider) Present(domain, token, keyAuth string) error {
-	info := dns01.GetChallengeInfo(domain, keyAuth)
-	rootDomain := getRootDomain(info.FQDN)
-	zoneId, err := GetCloudflareZoneIdFromDomainName(token, rootDomain)
+func (d *InfraCfCustomDNSProvider) SetZoneId(domain string) error {
+	zoneid, err := GetCloudflareZoneIdFromDomainName(d.ZoneToken, domain)
 	if err != nil {
-		slog.Error("error in InfraCfCustomProvider retrieving zone id", slog.String("error", err.Error()), slog.String("rootDomain", rootDomain))
+		slog.Error("error retrieving zone id from domain name", slog.String("domain", domain), slog.String("error", err.Error()))
 		return err
 	}
-	qry, err := CheckRecordNameExists(token, info.FQDN)
+	d.ZoneID = zoneid
+	return err
+}
+
+func (d *InfraCfCustomDNSProvider) Present(domain, token, keyAuth string) error {
+	if len(d.ZoneID) < 1 {
+		err := d.SetZoneId(domain)
+		if err != nil {
+			slog.Error("error during Present retrieving zone id from domain name", slog.String("domain", domain), slog.String("error", err.Error()))
+			return err
+		}
+	}
+
+	info := dns01.GetChallengeInfo(domain, keyAuth)
+
+	qry, err := CheckRecordNameExists(d.DnsToken, d.ZoneID, info.FQDN)
 	if err != nil {
 		slog.Error("error in InfraCfCustomProvider checking of txt record name exists", slog.String("error", err.Error()), slog.String("infoFQDN", info.FQDN))
 		return err
@@ -46,8 +62,8 @@ func (d *InfraCfCustomDNSProvider) Present(domain, token, keyAuth string) error 
 	case true:
 		return fmt.Errorf("txt record already exists, please remove it")
 	default:
-		params := cloudflare.CreateDNSRecordParams{Name: info.FQDN, Content: info.Value, TTL: d.TTL}
-		record, err := CreateCloudflareDnsRecord(token, zoneId, params)
+		params := cloudflare.CreateDNSRecordParams{Name: info.FQDN, Content: info.Value, TTL: d.TTL, Type: "TXT"}
+		record, err := CreateCloudflareDnsRecord(d.DnsToken, d.ZoneID, params)
 		if err != nil {
 			slog.Error("error creating dns record", slog.String("error", err.Error()), slog.String("infofqdn", info.FQDN))
 			return err
@@ -60,18 +76,21 @@ func (d *InfraCfCustomDNSProvider) Present(domain, token, keyAuth string) error 
 }
 
 func (d *InfraCfCustomDNSProvider) CleanUp(domain, token, keyAuth string) error {
-	zoneId, err := GetCloudflareZoneIdFromDomainName(token, getRootDomain(domain))
-	if err != nil {
-		slog.Error("error retrieving zone id during cleanup", slog.String("error", err.Error()))
-		return err
+	if len(d.ZoneID) < 1 {
+		err := d.SetZoneId(domain)
+		if err != nil {
+			slog.Error("error during Present retrieving zone id from domain name", slog.String("domain", domain), slog.String("error", err.Error()))
+			return err
+		}
 	}
+
 	if d.CreatedChallengeTXT {
 		if len(d.NewTxtRecordId) < 1 {
 			return fmt.Errorf("no txt record id specified for cleanup")
 		}
-		err := DeleteCloudFlareDnsRecord(token, zoneId, d.NewTxtRecordId)
+		err := DeleteCloudFlareDnsRecord(d.DnsToken, d.ZoneID, d.NewTxtRecordId)
 		if err != nil {
-			slog.Error("error deleting txt record id during cleanup", slog.String("error", err.Error()), slog.String("id", d.NewTxtRecordId), slog.String("zoneId", zoneId))
+			slog.Error("error deleting txt record id during cleanup", slog.String("error", err.Error()), slog.String("id", d.NewTxtRecordId), slog.String("zoneId", d.ZoneID))
 			return err
 		}
 		d.CreatedChallengeTXT = false
@@ -79,4 +98,20 @@ func (d *InfraCfCustomDNSProvider) CleanUp(domain, token, keyAuth string) error 
 		return err
 	}
 	return fmt.Errorf("error during cleanup, CreatedChallengeTXT set to false")
+}
+
+// getRootDomain extracts the root domain from a given subdomain.
+func getRootDomain(subdomain string) string {
+	parts := strings.Split(subdomain, ".")
+	if len(parts) < 2 {
+		return subdomain // Return as is if it's not a valid domain format
+	}
+
+	// Handle wildcard prefixes like "*.example.com"
+	if parts[0] == "*" {
+		parts = parts[1:]
+	}
+
+	// Return the last two segments as the root domain
+	return strings.Join(parts[len(parts)-2:], ".")
 }
