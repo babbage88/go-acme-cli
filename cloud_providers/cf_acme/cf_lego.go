@@ -22,8 +22,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type InfraDnsChallengeSolver interface {
-}
+type InfraDnsChallengeSolver interface{}
 
 func (u *AcmeUser) GetEmail() string {
 	return u.Email
@@ -71,7 +70,6 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 		})
 	*/
 	provider, err := NewInfraCfCustomDNSProvider(token, token, recursiveNameServers, timeout)
-
 	if err != nil {
 		slog.Error("error initializing cloudflare DNS challenge provider", slog.String("error", err.Error()))
 		return &lego.Client{}, &acmeUser, err
@@ -135,7 +133,6 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 	}
 
 	certData, err := c.Renew(c.Token, c.RecursiveNameServers, c.Timeout)
-
 	if err != nil {
 		slog.Error("error renewing certificate", slog.String("error", err.Error()))
 		return CertificateData{DomainNames: c.DomainNames}, err
@@ -195,6 +192,7 @@ func (c *CertificateRenewalRequest) Renew(token string, recursiveNameservers []s
 		PrivKey:         privKey,
 		Fullchain:       fullChain,
 		FullchainAndKey: fmt.Sprint(fullChain, privKey),
+		ZipDir:          c.ZipDir,
 	}
 
 	return certdata, err
