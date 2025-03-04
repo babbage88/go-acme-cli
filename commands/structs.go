@@ -25,12 +25,24 @@ type CloudflareCommandUtils struct {
 	Error     error           `json:"error"`
 	ApiClient *cloudflare.API `json:"clouflareApi"`
 	DbConn    *sql.DB         `json:"db"`
+	UseEnv    bool            `json:"useEnv"`
 }
 
-func NewCloudflareCommand(envfile string, domainName string) *CloudflareCommandUtils {
-	cfcmd := &CloudflareCommandUtils{EnvFile: envfile, ZoneName: domainName}
+func NewCloudflareCommandFromEnv(envfile string, domainName string) *CloudflareCommandUtils {
+	cfcmd := &CloudflareCommandUtils{EnvFile: envfile, ZoneName: domainName, UseEnv: true}
 	cfcmd.Error = godotenv.Load(cfcmd.EnvFile)
-	cfcmd.NewApiClient()
+	cfcmd.NewApiClientFromEnv()
+	if cfcmd.Error == nil {
+		cfcmd.ZomeId, cfcmd.Error = cfcmd.ApiClient.ZoneIDByName(domainName)
+	}
+	cfcmd.UseEnv = true
+
+	return cfcmd
+}
+
+func NewCloudflareCommand(token string, domainName string) *CloudflareCommandUtils {
+	cfcmd := &CloudflareCommandUtils{UseEnv: false, ZoneName: domainName}
+	cfcmd.NewApiClientFromToken(token)
 	if cfcmd.Error == nil {
 		cfcmd.ZomeId, cfcmd.Error = cfcmd.ApiClient.ZoneIDByName(domainName)
 	}
@@ -38,9 +50,13 @@ func NewCloudflareCommand(envfile string, domainName string) *CloudflareCommandU
 	return cfcmd
 }
 
-func (cf *CloudflareCommandUtils) NewApiClient() {
+func (cf *CloudflareCommandUtils) NewApiClientFromEnv() {
 	cf.Error = godotenv.Load(cf.EnvFile)
-	cf.ApiClient, cf.Error = cloudflare.NewWithAPIToken(os.Getenv("CLOUDFLARE_DNS_API_TOKEN"))
+	cf.ApiClient, cf.Error = cloudflare.NewWithAPIToken(os.Getenv("CF_TOKEN"))
+}
+
+func (cf *CloudflareCommandUtils) NewApiClientFromToken(token string) {
+	cf.ApiClient, cf.Error = cloudflare.NewWithAPIToken(token)
 }
 
 type UrFaveCliDocumentationSucks struct {

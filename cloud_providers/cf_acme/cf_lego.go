@@ -86,7 +86,7 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 	return client, &acmeUser, err
 }
 
-func (c *CertificateRenewalRequest) RenewCertWithDns() (CertificateData, error) {
+func (c *CertificateRenewalRequest) RenewCertWithDnsFromEnv() (CertificateData, error) {
 	certdata := &CertificateData{DomainNames: c.DomainNames}
 	token := os.Getenv("CLOUDFLARE_DNS_API_TOKEN")
 	nameServers := []string{"1.1.1.1", "1.0.0.1"}
@@ -134,7 +134,7 @@ func (c *CertificateRenewalRequest) CliRenewal() (CertificateData, error) {
 		return CertificateData{DomainNames: c.DomainNames}, err
 	}
 
-	certData, err := c.RenewCertWithDns()
+	certData, err := c.Renew(c.Token, c.RecursiveNameServers, c.Timeout)
 
 	if err != nil {
 		slog.Error("error renewing certificate", slog.String("error", err.Error()))

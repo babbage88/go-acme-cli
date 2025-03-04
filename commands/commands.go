@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/babbage88/go-acme-cli/cloud_providers/cf_acme"
 	"github.com/babbage88/go-acme-cli/internal/bumper"
@@ -57,23 +58,34 @@ func DnsBaseCommand() []*cli.Command {
 					Usage:   "push certs zip to s3 bucket.",
 				},
 				&cli.StringFlag{
-					Name:    "acme-email",
-					Value:   "justin@trahan.dev",
-					Usage:   "Email for Let's Encrypt renewal request.",
-					Sources: cli.EnvVars("LE_EMAIL"),
+					Name:  "acme-email",
+					Value: os.Getenv("LE_EMAIL"),
+					Usage: "Email for Let's Encrypt renewal request.",
+				},
+				&cli.StringFlag{
+					Name:  "cf-dns-token",
+					Value: os.Getenv("CF_TOKEN"),
+					Usage: "Token executing DNS canges through the Cloudflare API.",
+				},
+				&cli.StringSliceFlag{
+					Name:  "recursive-nameservers",
+					Value: []string{"1.1.1.1", "1.0.0.1"},
+					Usage: "Token executing DNS canges through the Cloudflare API.",
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					fmt.Println(cmd.String("acme-url"))
 					certRequest := &cf_acme.CertificateRenewalRequest{
-						EnvFile:     cmd.String("env-file"),
-						DomainNames: cmd.StringSlice("renew-domains"),
-						AcmeEmail:   cmd.String("acme-email"),
-						AcmeUrl:     cmd.String("acme-url"),
-						ZipDir:      cmd.String("zip-name"),
-						SaveZip:     cmd.Bool("acme-save-zip"),
-						PushS3:      cmd.Bool("acme-pushs3"),
+						EnvFile:              cmd.String("env-file"),
+						DomainNames:          cmd.StringSlice("renew-domains"),
+						AcmeEmail:            cmd.String("acme-email"),
+						AcmeUrl:              cmd.String("acme-url"),
+						ZipDir:               cmd.String("zip-name"),
+						SaveZip:              cmd.Bool("acme-save-zip"),
+						PushS3:               cmd.Bool("acme-pushs3"),
+						Token:                cmd.String("cf-dns-token"),
+						RecursiveNameServers: cmd.StringSlice("recursive-nameservers"),
 					}
 					_, err := certRequest.CliRenewal()
 					if err != nil {
@@ -140,6 +152,12 @@ func CoreInfraCommand() *cli.Command {
 				Usage:   "Return list of all records that match query params",
 				Value:   false,
 			},
+			&cli.BoolFlag{
+				Name:    "use-env",
+				Aliases: []string{"from-env"},
+				Value:   false,
+				Usage:   "Choose whether to use env file for cf tokens",
+			},
 		},
 		Commands: DnsBaseCommand(),
 	}
@@ -188,7 +206,7 @@ func cfDnsSubcommandFlags() []cli.Flag {
 		},
 		&cli.BoolFlag{
 			Name:    "to-db",
-			Value:   true,
+			Value:   false,
 			Aliases: []string{"insert-to-db"},
 			Usage:   "Create/update records in sqlite db.",
 		},
@@ -205,6 +223,11 @@ func cfDnsSubcommandFlags() []cli.Flag {
 			Name:    "tags",
 			Aliases: []string{"record-tags"},
 			Usage:   "tags for record",
+		},
+		&cli.StringFlag{
+			Name:    "dns-token",
+			Sources: cli.EnvVars("CF_TOKEN"),
+			Usage:   "Cloudflare token for performing dns functions",
 		},
 	}
 	return flags
@@ -245,7 +268,14 @@ func GetDnsSubCommands() []*cli.Command {
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					var cfcmd *CloudflareCommandUtils
+					fromEnv := cmd.Bool("use-env")
+					if fromEnv {
+						cfcmd = NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
+					} else {
+						cfcmd = NewCloudflareCommand(cmd.String("dns-token"), cmd.String("domain-name"))
+					}
+
 					if cfcmd.Error != nil {
 						logger.Error(cfcmd.Error.Error())
 						return cfcmd.Error
@@ -318,7 +348,14 @@ func GetDnsSubCommands() []*cli.Command {
 			Category:              "dns",
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
-				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+				var cfcmd *CloudflareCommandUtils
+				fromEnv := cmd.Bool("use-env")
+				if fromEnv {
+					cfcmd = NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
+				} else {
+					cfcmd = NewCloudflareCommand(cmd.String("dns-token"), cmd.String("domain-name"))
+				}
+
 				params := &cloudflare.ListDNSRecordsParams{}
 				if cfcmd.Error != nil {
 					logger.Error(cfcmd.Error.Error())
@@ -388,7 +425,13 @@ func GetDnsSubCommands() []*cli.Command {
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					var cfcmd *CloudflareCommandUtils
+					fromEnv := cmd.Bool("use-env")
+					if fromEnv {
+						cfcmd = NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
+					} else {
+						cfcmd = NewCloudflareCommand(cmd.String("dns-token"), cmd.String("domain-name"))
+					}
 					if cfcmd.Error != nil {
 						logger.Error(cfcmd.Error.Error())
 						return cfcmd.Error
@@ -401,7 +444,7 @@ func GetDnsSubCommands() []*cli.Command {
 					printDnsRecord(record)
 					return cfcmd.Error
 				}
-				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+				cfcmd := NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
 				if cfcmd.Error != nil {
 					logger.Error(cfcmd.Error.Error())
 					return cfcmd.Error
@@ -434,7 +477,13 @@ func GetDnsSubCommands() []*cli.Command {
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					params := &cloudflare.UpdateDNSRecordParams{ID: cmd.String("record-id")}
-					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					var cfcmd *CloudflareCommandUtils
+					fromEnv := cmd.Bool("use-env")
+					if fromEnv {
+						cfcmd = NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
+					} else {
+						cfcmd = NewCloudflareCommand(cmd.String("dns-token"), cmd.String("domain-name"))
+					}
 					if cfcmd.Error != nil {
 						logger.Error(cfcmd.Error.Error())
 						return cfcmd.Error
@@ -495,7 +544,13 @@ func GetDnsSubCommands() []*cli.Command {
 			EnableShellCompletion: true,
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
-					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					var cfcmd *CloudflareCommandUtils
+					fromEnv := cmd.Bool("use-env")
+					if fromEnv {
+						cfcmd = NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
+					} else {
+						cfcmd = NewCloudflareCommand(cmd.String("dns-token"), cmd.String("domain-name"))
+					}
 					if cfcmd.Error != nil {
 						logger.Error(cfcmd.Error.Error())
 						return cfcmd.Error
@@ -503,7 +558,7 @@ func GetDnsSubCommands() []*cli.Command {
 					cfcmd.DeleteCloudflareRecord(cmd.String("rm-record-id"))
 					return cfcmd.Error
 				}
-				cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+				cfcmd := NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
 				if cfcmd.Error != nil {
 					logger.Error(cfcmd.Error.Error())
 					return cfcmd.Error
@@ -522,7 +577,13 @@ func GetDnsSubCommands() []*cli.Command {
 			Action: func(ctx context.Context, cmd *cli.Command) (err error) {
 				if cmd.NArg() == 0 {
 					params := &cloudflare.CreateDNSRecordParams{}
-					cfcmd := NewCloudflareCommand(cmd.String("env-file"), cmd.String("domain-name"))
+					var cfcmd *CloudflareCommandUtils
+					fromEnv := cmd.Bool("use-env")
+					if fromEnv {
+						cfcmd = NewCloudflareCommandFromEnv(cmd.String("env-file"), cmd.String("domain-name"))
+					} else {
+						cfcmd = NewCloudflareCommand(cmd.String("dns-token"), cmd.String("domain-name"))
+					}
 					if cfcmd.Error != nil {
 						logger.Error(cfcmd.Error.Error())
 						return cfcmd.Error
