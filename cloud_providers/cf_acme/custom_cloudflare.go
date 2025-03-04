@@ -15,20 +15,26 @@ type ICertRenewalService interface {
 }
 
 type InfraCfCustomDNSProvider struct {
-	DnsToken             string   `json:"dnsToken"`
-	ZoneToken            string   `json:"zoneToken"`
-	RecursiveNameServers []string `json:"recursiveNameServers"`
-	NewTxtRecordId       string   `json:"newTxtRecordId"`
-	CreatedChallengeTXT  bool     `json:"txtCreated"`
-	TTL                  int      `json:"ttl"`
-	ZoneID               string   `json:"zoneID"`
-	//PropagationTimeout   time.Duration `json:"propagationTimout"`
+	DnsToken                 string        `json:"dnsToken"`
+	ZoneToken                string        `json:"zoneToken"`
+	RecursiveNameServers     []string      `json:"recursiveNameServers"`
+	NewTxtRecordId           string        `json:"newTxtRecordId"`
+	CreatedChallengeTXT      bool          `json:"txtCreated"`
+	TTL                      int           `json:"ttl"`
+	ZoneID                   string        `json:"zoneID"`
+	PropagationTimeout       time.Duration `json:"propagationTimout"`
+	PropagationCheckInterval time.Duration `json:"checkInterval"`
 }
 
-func NewInfraCfCustomDNSProvider(dnsApiToken string, zoneApiToken string, recursiveNameServers []string) (*InfraCfCustomDNSProvider, error) {
-	ttl := int(120)
+func (d *InfraCfCustomDNSProvider) Timeout() (timeout, interval time.Duration) {
+	return d.PropagationTimeout, d.PropagationCheckInterval
+}
 
-	return &InfraCfCustomDNSProvider{DnsToken: dnsApiToken, ZoneToken: zoneApiToken, RecursiveNameServers: recursiveNameServers, TTL: ttl}, nil
+func NewInfraCfCustomDNSProvider(dnsApiToken string, zoneApiToken string, recursiveNameServers []string, timeout time.Duration) (*InfraCfCustomDNSProvider, error) {
+	ttl := int(120)
+	checkInterval := 2 * time.Second
+
+	return &InfraCfCustomDNSProvider{DnsToken: dnsApiToken, ZoneToken: zoneApiToken, RecursiveNameServers: recursiveNameServers, TTL: ttl, PropagationTimeout: timeout, PropagationCheckInterval: checkInterval}, nil
 }
 
 func (d *InfraCfCustomDNSProvider) SetZoneId(domain string) error {

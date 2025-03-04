@@ -225,9 +225,9 @@ func cfDnsSubcommandFlags() []cli.Flag {
 			Usage:   "tags for record",
 		},
 		&cli.StringFlag{
-			Name:    "dns-token",
-			Sources: cli.EnvVars("CF_TOKEN"),
-			Usage:   "Cloudflare token for performing dns functions",
+			Name:  "dns-token",
+			Value: os.Getenv("CF_TOKEN"),
+			Usage: "Cloudflare token for performing dns functions",
 		},
 	}
 	return flags

@@ -70,7 +70,7 @@ func (c *CertificateRenewalRequest) InitialzeClientandPovider(token string, recu
 			PropagationTimeout: timeout,
 		})
 	*/
-	provider, err := NewInfraCfCustomDNSProvider(token, token, recursiveNameServers)
+	provider, err := NewInfraCfCustomDNSProvider(token, token, recursiveNameServers, timeout)
 
 	if err != nil {
 		slog.Error("error initializing cloudflare DNS challenge provider", slog.String("error", err.Error()))
