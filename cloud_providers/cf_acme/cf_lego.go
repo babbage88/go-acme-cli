@@ -190,6 +190,7 @@ func (c *CertificateRenewalRequest) Renew(token string, recursiveNameservers []s
 	certdata := CertificateData{
 		DomainNames:     c.DomainNames,
 		CertPEM:         cert,
+		ChainPEM:        issuerCA,
 		PrivKey:         privKey,
 		Fullchain:       fullChain,
 		FullchainAndKey: fmt.Sprint(fullChain, privKey),
