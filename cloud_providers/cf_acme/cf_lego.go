@@ -1,6 +1,7 @@
 package cf_acme
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -206,6 +207,14 @@ func (c *CertificateData) SaveToZip(path string) error {
 	return err
 }
 
+func (c *CertificateData) SaveToZipBuffer(objectName string) (*bytes.Buffer, error) {
+	buf, err := saveZipToBuffer(objectName, []byte(c.CertPEM), []byte(c.PrivKey), []byte(c.ChainPEM))
+	if err != nil {
+		slog.Error("error saving zip to buffer", slog.String("error", err.Error()))
+	}
+	return buf, err
+}
+
 func (c *CertificateData) PushZipDirToS3(objName string) error {
 	s3client, err := goinfra_minio.NewS3ClientFromEnv()
 	if err != nil {
@@ -216,6 +225,31 @@ func (c *CertificateData) PushZipDirToS3(objName string) error {
 	if pushErr != nil {
 		err = pushErr
 		slog.Error("error pushing file to s3", slog.String("error", err.Error()), slog.String("sourceFile", c.ZipDir))
+	}
+	expiry := 15 * time.Minute
+	presignedUrl, err := s3client.Client.PresignedGetObject(context.Background(), s3client.DefaultBucketName, objName, expiry, nil)
+	if err != nil {
+		slog.Error("Error generating presigned download URL", slog.String("error", err.Error()))
+	}
+	c.S3DownloadUrl = presignedUrl.String()
+	return err
+}
+
+func (c *CertificateData) PushCertBufferToS3(objName string) error {
+	s3client, err := goinfra_minio.NewS3ClientFromEnv()
+	if err != nil {
+		slog.Error("error initializing client", slog.String("error", err.Error()))
+		return err
+	}
+
+	buf, err := saveZipToBuffer(c.ZipDir, []byte(c.CertPEM), []byte(c.PrivKey), []byte(c.ChainPEM))
+	if err != nil {
+		slog.Error("error saving zip to buffer", slog.String("error", err.Error()))
+	}
+	_, pushErr := s3client.PushBufferToDefaultBucket(objName, buf)
+	if pushErr != nil {
+		err = pushErr
+		slog.Error("error pushing buffer to s3", slog.String("error", err.Error()), slog.String("sourceFile", c.ZipDir))
 	}
 	expiry := 15 * time.Minute
 	presignedUrl, err := s3client.Client.PresignedGetObject(context.Background(), s3client.DefaultBucketName, objName, expiry, nil)

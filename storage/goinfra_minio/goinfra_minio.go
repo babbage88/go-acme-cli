@@ -70,6 +70,15 @@ func (s *S3ClientWithBucket) PushBytesToDefaultBucket(newObjectName string, sour
 	return info, err
 }
 
+func (s *S3ClientWithBucket) PushBufferToDefaultBucket(newObjectName string, buf *bytes.Buffer) (minio.UploadInfo, error) {
+	info, err := s.Client.PutObject(context.Background(), s.DefaultBucketName, newObjectName, bytes.NewReader(buf.Bytes()), int64(buf.Len()), minio.PutObjectOptions{})
+	if err != nil {
+		slog.Error("error pushing bytes buffer to default bucket", slog.String("defaultBucketName", s.DefaultBucketName), slog.String("error", err.Error()))
+	}
+
+	return info, err
+}
+
 func (s *S3ClientWithBucket) GetFromDefaultBucket(objectName string, filePath string) error {
 	err := s.Client.FGetObject(context.Background(), s.DefaultBucketName, objectName, filePath, *s.DefaultGetOptions)
 	if err != nil {
