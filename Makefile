@@ -1,4 +1,4 @@
-DOCKER_HUB:=ghcr.io/babbage88/goinfacli:
+GHCR_REPO:=ghcr.io/babbage88/goinfacli:
 BIN_NAME:=goinfracli
 MAIN_BRANCH:=master
 VERSION_TYPE:=patch
@@ -69,7 +69,7 @@ create-builder: check-builder
 
 buildandpush: check-builder
 	docker buildx use goinfaclibuilder
-	docker buildx build --platform linux/amd64,linux/arm64 -t $(DOCKER_HUB)$(tag) . --push
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(GHCR_REPO)$(tag) . --push
 
 deploydev: buildandpushdev
 	kubectl apply -f deployment/kubernetes/infra-goinfacli.yaml

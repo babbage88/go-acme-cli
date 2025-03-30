@@ -78,3 +78,26 @@ func saveZipToBuffer(objectName string, certPEM, keyPEM, issuerCA []byte) (*byte
 	}
 	return buf, nil
 }
+
+func saveFilesToZipBuffer(objectName string, files map[string][]byte) (*bytes.Buffer, error) {
+	// Create an in-memory buffer
+	buf := new(bytes.Buffer)
+	zipWriter := zip.NewWriter(buf)
+
+	// Add each file to the ZIP archive
+	for name, content := range files {
+		writer, err := zipWriter.Create(name)
+		if err != nil {
+			return buf, fmt.Errorf("failed to create zip entry %s: %w", name, err)
+		}
+		if _, err := writer.Write(content); err != nil {
+			return buf, fmt.Errorf("failed to write zip entry %s: %w", name, err)
+		}
+	}
+
+	// Close the ZIP writer to flush data to buffer
+	if err := zipWriter.Close(); err != nil {
+		return buf, fmt.Errorf("failed to close zip writer: %w", err)
+	}
+	return buf, nil
+}
